@@ -51,6 +51,9 @@ func BigIntToFloatDiv(input *big.Int, devider float64) float64 {
 }
 
 func FloatToBigIntMul(input float64, multiplier float64) *big.Int {
+	if input == 0 {
+		return big.NewInt(0)
+	}
 	bigE18 := big.NewFloat(0).Mul(big.NewFloat(input), big.NewFloat(multiplier))
 	result, _ := bigE18.Int(nil)
 	return result
