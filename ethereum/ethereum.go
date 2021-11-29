@@ -238,12 +238,12 @@ func NewSignedTX(
 	overwritePending bool,
 	methodName string,
 	args []interface{},
-	netID int64,
 	gasLimit uint64,
 	gasMaxFee float64,
 	value float64,
 ) (*types.Transaction, string, error) {
 
+	netID := client.NetworkID()
 	var nonce uint64
 	var err error
 	if overwritePending {
