@@ -55,3 +55,8 @@ func FloatToBigIntMul(input float64, multiplier float64) *big.Int {
 	result, _ := bigE18.Int(nil)
 	return result
 }
+
+func FloatToBigInt(input float64) *big.Int {
+	result, _ := big.NewFloat(input).Int(nil)
+	return result
+}
