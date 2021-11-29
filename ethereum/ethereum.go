@@ -14,6 +14,7 @@ import (
 
 	math_t "github.com/cryptoriums/packages/math"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -229,15 +230,43 @@ func (self *ClientCachedNetID) CallContext(ctx context.Context, result interface
 }
 
 func NewSignedTX(
-	to common.Address,
-	data []byte,
-	nonce uint64,
+	ctx context.Context,
 	prvKey *ecdsa.PrivateKey,
+	to common.Address,
+	client EthClient,
+	abis string,
+	overwritePending bool,
+	methodName string,
+	args []interface{},
 	netID int64,
 	gasLimit uint64,
 	gasMaxFee float64,
 	value float64,
 ) (*types.Transaction, string, error) {
+
+	var nonce uint64
+	var err error
+	if overwritePending {
+		nonce, err = client.NonceAt(ctx, crypto.PubkeyToAddress(prvKey.PublicKey), nil)
+		if err != nil {
+			return nil, "", errors.Wrap(err, "getting last nonce")
+		}
+	} else {
+		nonce, err = client.PendingNonceAt(ctx, crypto.PubkeyToAddress(prvKey.PublicKey))
+		if err != nil {
+			return nil, "", errors.Wrap(err, "getting pending nonce")
+		}
+	}
+
+	abiP, err := abi.JSON(strings.NewReader(abis))
+	if err != nil {
+		return nil, "", errors.Wrap(err, "read contract ABI")
+	}
+
+	data, err := abiP.Pack(methodName, args...)
+	if err != nil {
+		return nil, "", errors.Wrap(err, "packing ABI")
+	}
 
 	if gasMaxFee == 0 {
 		return nil, "", errors.New("for EIP1559 TXs the gasMaxFee should not be zero")
