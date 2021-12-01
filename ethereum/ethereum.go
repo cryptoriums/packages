@@ -175,26 +175,32 @@ func NewClient(ctx context.Context, logger log.Logger, envVars map[string]string
 		return nil, errors.New("the env file doesn't contain any node urls")
 	}
 
-	ethClient, rpcClient, netID, err := NewClients(ctx, logger, nodes[0])
+	ethClient, rpcClient, netID, err := NewClients(ctx, logger, nodes)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ClientCachedNetID{
-		Client:    ethClient,
+		Client:    ethClient[0],
 		netID:     netID,
-		rpcClient: rpcClient,
+		rpcClient: rpcClient[0],
 	}, nil
 }
 
-func NewClients(ctx context.Context, logger log.Logger, nodeURL string) (*ethclient.Client, *rpc.Client, int64, error) {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	ethClient := ethclient.NewClient(rpcClient)
+func NewClients(ctx context.Context, logger log.Logger, nodeURLs []string) ([]*ethclient.Client, []*rpc.Client, int64, error) {
+	var (
+		ethClients []*ethclient.Client
+		rpcClients []*rpc.Client
+		lastNetID  int64
+	)
 
-	if !strings.Contains(strings.ToLower(nodeURL), "arbitrum") { // Arbitrum nodes doesn't support sync checking.
+	for i, nodeURL := range nodeURLs {
+		rpcClient, err := rpc.DialContext(ctx, nodeURL)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		ethClient := ethclient.NewClient(rpcClient)
+
 		// Issue #55, halt if client is still syncing with Ethereum network
 		s, err := ethClient.SyncProgress(ctx)
 		if err != nil {
@@ -203,16 +209,23 @@ func NewClients(ctx context.Context, logger log.Logger, nodeURL string) (*ethcli
 		if s != nil {
 			return nil, nil, 0, errors.New("ethereum node is still syncing with the network")
 		}
+
+		netID, err := ethClient.NetworkID(ctx)
+		if err != nil {
+			return nil, nil, 0, errors.Wrap(err, "get nerwork ID")
+		}
+		if i > 0 && lastNetID != netID.Int64() {
+			return nil, nil, 0, errors.Wrap(err, "can't use multiple nodes with different network IDS")
+		}
+
+		lastNetID = netID.Int64()
+
+		level.Info(logger).Log("msg", "created ethereum client", "netID", netID.Int64(), "node", nodeURL)
+		ethClients = append(ethClients, ethClient)
+		rpcClients = append(rpcClients, rpcClient)
 	}
 
-	netID, err := ethClient.NetworkID(ctx)
-	if err != nil {
-		return nil, nil, 0, errors.Wrap(err, "get nerwork ID")
-	}
-
-	level.Info(logger).Log("msg", "created ethereum client", "netID", netID.Int64())
-
-	return ethClient, rpcClient, netID.Int64(), nil
+	return ethClients, rpcClients, lastNetID, nil
 }
 
 type ClientCachedNetID struct {
