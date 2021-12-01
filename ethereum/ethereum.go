@@ -378,3 +378,12 @@ func GetEtherscanURL(netID int64) string {
 	}
 	return "https://" + prefix + "etherscan.io/"
 }
+
+func HashFromLog(log types.Log) string {
+	// Using the topics data will cause a race when more than one TX include a log with the same topics, but it is highly unlikely.
+	topicStr := ""
+	for _, topic := range log.Topics {
+		topicStr += topic.Hex() + ","
+	}
+	return log.TxHash.Hex() + "-topics:" + topicStr
+}
