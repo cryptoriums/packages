@@ -46,6 +46,7 @@ const (
 	BlocksPerSecond    = float64(1 / BlockTime)
 	BlocksPerMinute    = float64(60 / BlockTime)
 	ReorgEventWaitSafe = time.Minute
+	ReorgEventWaitSlow = 3 * time.Minute
 	ReorgEventWaitFast = 30 * time.Second
 )
 
