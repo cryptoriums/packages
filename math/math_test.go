@@ -157,6 +157,11 @@ func TestBigIntToFloatDiv(t *testing.T) {
 			params.Ether,
 			0.01,
 		},
+		{
+			5e9,
+			params.Ether,
+			0.000000005,
+		},
 	}
 
 	for i, tc := range cases {

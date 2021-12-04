@@ -37,15 +37,13 @@ func BigIntToFloat(input *big.Int) float64 {
 }
 
 func BigIntToFloatDiv(input *big.Int, devider float64) float64 {
+	fl := BigIntToFloat(input)
 	if devider == 1 {
-		fl, _ := big.NewFloat(0).SetInt(input).Float64()
 		return fl
 	}
 	f := 0.0
 	if input != nil {
-		divisor := big.NewInt(int64(devider / float64(100)))
-		divisor = big.NewInt(0).Div(input, divisor)
-		f = float64(divisor.Int64()) / 100
+		return fl / devider
 	}
 	return f
 }
