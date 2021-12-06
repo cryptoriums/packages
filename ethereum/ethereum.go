@@ -36,6 +36,7 @@ type EthClient interface {
 	NetworkID() int64
 	BlockNumber(ctx context.Context) (uint64, error)
 	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
+	Close()
 }
 
 const (
