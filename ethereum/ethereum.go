@@ -9,9 +9,12 @@ import (
 	"encoding/hex"
 	"math/big"
 	"regexp"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/bluele/gcache"
 	math_t "github.com/cryptoriums/packages/math"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -381,6 +384,145 @@ func GetEtherscanURL(netID int64) string {
 	return "https://" + prefix + "etherscan.io/"
 }
 
+func NewSubscriptionWithRedundancy(ctx context.Context, logger log.Logger, logFilterers []ethereum.LogFilterer, query ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
+	chAll := make(chan types.Log)
+
+	ctx, cncl := context.WithCancel(ctx)
+	subsR := &SubscriptionWithRedundancy{
+		ctx:          ctx,
+		cncl:         cncl,
+		logger:       logger,
+		logFilterers: logFilterers,
+		query:        query,
+		ch:           ch,
+		chAll:        chAll,
+		cacheSentTXs: gcache.New(1000).LRU().Build(),
+	}
+
+	subsR.Run()
+
+	return subsR, nil
+
+}
+
+type SubscriptionWithRedundancy struct {
+	ctx            context.Context
+	mtx            sync.Mutex
+	logger         log.Logger
+	cncl           context.CancelFunc
+	ch             chan<- types.Log
+	err            chan error
+	chAll          chan types.Log
+	errsAll        []<-chan error
+	totalEventsRcv int64
+	totalEventsSnt int64
+	subs           []ethereum.Subscription
+	cacheSentTXs   gcache.Cache
+	logFilterers   []ethereum.LogFilterer
+	query          ethereum.FilterQuery
+}
+
+func (self *SubscriptionWithRedundancy) Run() {
+	go func() {
+		for log := range self.chAll {
+			self.mtx.Lock()
+			self.totalEventsRcv++
+			self.mtx.Unlock()
+			hash := HashFromLogAllFields(log)
+			_, err := self.cacheSentTXs.Get(hash)
+			if err != gcache.KeyNotFoundError {
+				level.Debug(self.logger).Log("msg", "skipping event that has already been sent", "hash", hash)
+				continue
+			}
+			select {
+			case <-self.ctx.Done():
+				return
+			case self.ch <- log:
+				self.mtx.Lock()
+				self.totalEventsSnt++
+				self.mtx.Unlock()
+				if err := self.cacheSentTXs.Set(hash, true); err != nil {
+					level.Error(self.logger).Log("msg", "adding tx event cache", "err", err)
+				}
+			}
+		}
+	}()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	// First send past events and then subscribe to the new ones.
+	go func() {
+		level.Debug(self.logger).Log("msg", "sending past logs")
+		for _, logFilterer := range self.logFilterers {
+			logs, err := logFilterer.FilterLogs(self.ctx, self.query)
+			if err != nil {
+				level.Error(self.logger).Log("msg", "getting past logs", "err", err)
+				return
+			}
+			for _, log := range logs {
+				self.chAll <- log
+			}
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		wg.Wait()
+		level.Debug(self.logger).Log("msg", "creating the live events subscription")
+		var (
+			subs []ethereum.Subscription
+			errs []<-chan error
+		)
+
+		for _, logFilterer := range self.logFilterers {
+			sub, err := logFilterer.SubscribeFilterLogs(self.ctx, self.query, self.chAll)
+			if err != nil {
+				self.err <- errors.Wrap(err, "creating SubscribeFilterLogs subscription")
+				return
+			}
+			subs = append(subs, sub)
+			errs = append(errs, sub.Err())
+		}
+
+		self.mtx.Lock()
+		self.subs = subs
+		self.errsAll = errs
+		self.mtx.Unlock()
+	}()
+
+	for _, err := range self.errsAll {
+		go func(err <-chan error) {
+			select {
+			case <-self.ctx.Done():
+				return
+			case errI := <-err:
+				self.err <- errI
+			}
+		}(err)
+	}
+
+}
+
+func (self *SubscriptionWithRedundancy) EventsCount() (int64, int64) {
+	self.mtx.Lock()
+	defer self.mtx.Unlock()
+	return self.totalEventsRcv, self.totalEventsSnt
+}
+
+func (self *SubscriptionWithRedundancy) Unsubscribe() {
+	self.mtx.Lock()
+	defer self.mtx.Unlock()
+	for _, sub := range self.subs {
+		sub.Unsubscribe()
+	}
+
+	self.cncl()
+}
+
+func (self *SubscriptionWithRedundancy) Err() <-chan error {
+	return self.err
+}
+
 func HashFromLog(log types.Log) string {
 	// Using the topics data will cause a race when more than one TX include a log with the same topics, but it is highly unlikely.
 	topicStr := ""
@@ -388,4 +530,9 @@ func HashFromLog(log types.Log) string {
 		topicStr += topic.Hex() + ","
 	}
 	return log.TxHash.Hex() + "-topics:" + topicStr
+}
+
+func HashFromLogAllFields(log types.Log) string {
+	hash := HashFromLog(log)
+	return hash + "-blockHash:" + log.BlockHash.Hex() + "-txIndex:" + log.TxHash.Hex() + "-removed:" + strconv.FormatBool(log.Removed)
 }

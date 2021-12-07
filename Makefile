@@ -93,7 +93,7 @@ go-lint: check-git deps $(GOLANGCI_LINT) $(FAILLINT) $(MISSPELL)
 	@echo ">> linting all of the Go files GOGC=${GOGC}"
 	@$(GOLANGCI_LINT) run
 	@echo ">> detecting misspells"
-	@find . -type f | grep -v pkg/contracts/tellor | grep -v tmp | grep -v go.sum | grep -vE '\./\..*' | xargs $(MISSPELL) -error
+	@find . -type f | grep -v tmp | grep -v go.sum | grep -vE '\./\..*' | xargs $(MISSPELL) -error
 	@echo ">> ensuring Copyright headers"
 	@go run ./scripts/copyright
 	$(call require_clean_work_tree,'detected file changes, run make lint and commit changes')
@@ -110,6 +110,10 @@ update-go-deps: ## Update all golang dependencies.
 		$(GO) get $$m; \
 	done
 	$(GO) mod tidy
+
+.PHONY: generate-bindings
+generate-bindings: $(CONTRAGET)
+	@$(CONTRAGET) --path=testing/contracts/simple.sol --pkg-dst=testing/contracts --name=simple
 
 
 ##### NON-phony targets

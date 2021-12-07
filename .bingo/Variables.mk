@@ -7,16 +7,22 @@ GO     ?= $(shell which go)
 
 # Below generated variables ensure that every time a tool under each variable is invoked, the correct version
 # will be used; reinstalling only if needed.
-# For example for faillint variable:
+# For example for contraget variable:
 #
 # In your main Makefile (for non array binaries):
 #
 #include .bingo/Variables.mk # Assuming -dir was set to .bingo .
 #
-#command: $(FAILLINT)
-#	@echo "Running faillint"
-#	@$(FAILLINT) <flags/args..>
+#command: $(CONTRAGET)
+#	@echo "Running contraget"
+#	@$(CONTRAGET) <flags/args..>
 #
+CONTRAGET := $(GOBIN)/contraget-v0.0.0-20211204194358-1f5bb7f231b2
+$(CONTRAGET): $(BINGO_DIR)/contraget.mod
+	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
+	@echo "(re)installing $(GOBIN)/contraget-v0.0.0-20211204194358-1f5bb7f231b2"
+	@cd $(BINGO_DIR) && $(GO) build -mod=mod -modfile=contraget.mod -o=$(GOBIN)/contraget-v0.0.0-20211204194358-1f5bb7f231b2 "github.com/cryptoriums/contraget/cmd/contraget"
+
 FAILLINT := $(GOBIN)/faillint-v1.7.0
 $(FAILLINT): $(BINGO_DIR)/faillint.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
