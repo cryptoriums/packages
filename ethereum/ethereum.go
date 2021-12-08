@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/bluele/gcache"
@@ -408,7 +407,6 @@ func NewLogFiltererWithRedundancy(ctx context.Context, logger log.Logger, logFil
 		cncl:         cncl,
 		logger:       logger,
 		logFilterers: logFilterers,
-		chAll:        make(chan types.Log),
 		err:          make(chan error),
 		cacheSentTXs: gcache.New(1000).LRU().Build(),
 	}
@@ -416,12 +414,9 @@ func NewLogFiltererWithRedundancy(ctx context.Context, logger log.Logger, logFil
 
 type LogFiltererWithRedundancy struct {
 	ctx          context.Context
-	mtx          sync.Mutex
 	logger       log.Logger
 	cncl         context.CancelFunc
 	err          chan error
-	chAll        chan types.Log
-	errsAll      []<-chan error
 	subs         []ethereum.Subscription
 	cacheSentTXs gcache.Cache
 	logFilterers []ethereum.LogFilterer
@@ -490,8 +485,9 @@ func (self *LogFiltererWithRedundancy) cache(cache gcache.Cache, log types.Log) 
 }
 
 func (self *LogFiltererWithRedundancy) SubscribeFilterLogs(ctx context.Context, query ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
-	go func() {
-		for log := range self.chAll {
+	chAll := make(chan types.Log)
+	go func(chAll chan types.Log) {
+		for log := range chAll {
 			if self.isCached(self.cacheSentTXs, log) {
 				continue
 			}
@@ -502,28 +498,15 @@ func (self *LogFiltererWithRedundancy) SubscribeFilterLogs(ctx context.Context, 
 				self.cache(self.cacheSentTXs, log)
 			}
 		}
-	}()
-
-	var (
-		subs []ethereum.Subscription
-		errs []<-chan error
-	)
+	}(chAll)
 
 	for _, logFilterer := range self.logFilterers {
-		sub, err := logFilterer.SubscribeFilterLogs(self.ctx, query, self.chAll)
+		sub, err := logFilterer.SubscribeFilterLogs(self.ctx, query, chAll)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating SubscribeFilterLogs subscription")
 		}
-		subs = append(subs, sub)
-		errs = append(errs, sub.Err())
-	}
+		self.subs = append(self.subs, sub)
 
-	self.mtx.Lock()
-	self.subs = subs
-	self.errsAll = errs
-	self.mtx.Unlock()
-
-	for _, err := range self.errsAll {
 		go func(err <-chan error) {
 			select {
 			case <-self.ctx.Done():
@@ -531,15 +514,13 @@ func (self *LogFiltererWithRedundancy) SubscribeFilterLogs(ctx context.Context, 
 			case errI := <-err:
 				self.err <- errI
 			}
-		}(err)
+		}(sub.Err())
 	}
 
 	return self, nil
 }
 
 func (self *LogFiltererWithRedundancy) Unsubscribe() {
-	self.mtx.Lock()
-	defer self.mtx.Unlock()
 	for _, sub := range self.subs {
 		sub.Unsubscribe()
 	}
