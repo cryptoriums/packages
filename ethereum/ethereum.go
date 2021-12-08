@@ -395,7 +395,7 @@ func NewEthClientWithFiltererRedundancy(ctx context.Context, logger log.Logger, 
 		filterers = append(filterers, client)
 	}
 	return &EthClientWithFiltererRedundancy{
-		Client:           clients[0],
+		Client:           clients[0], // For the functions that don't offer redundancy just call the first client.
 		ContractFilterer: NewLogFiltererWithRedundancy(ctx, logger, filterers),
 	}
 }

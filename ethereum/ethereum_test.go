@@ -32,6 +32,8 @@ import (
 // alchemy, err := ethclient.Dial("wss://alchemyapi.io/......")
 //
 // client := NewEthClientWithFiltererRedundancy(ctx, logger, []*ethclient.Client{infura, alchemy})
+// client.FilterLogs(ctx, query)
+// client.SubscribeFilterLogs(ctx, query, ch)
 func TestLogsWithRedundancy(t *testing.T) {
 	logger := logging.NewLogger()
 	logging.ApplyFilter("debug", logger)
