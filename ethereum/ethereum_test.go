@@ -5,11 +5,9 @@ package ethereum
 
 import (
 	"crypto/ecdsa"
-	"fmt"
 	"math/big"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/cryptoriums/packages/logging"
 	"github.com/cryptoriums/packages/testing/contracts/simple"
@@ -22,11 +20,19 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/go-kit/log/level"
 	"golang.org/x/net/context"
 )
 
-func TestSubscriptionWithRedundancy(t *testing.T) {
+// TestLogsWithRedundancy ensures that events are deduplicated properly when using multiple backends.
+//
+//
+// Here is an example how to use with node urls.
+//
+// infura, err := ethclient.Dial("wss://infura.io/......")
+// alchemy, err := ethclient.Dial("wss://alchemyapi.io/......")
+//
+// client := NewEthClientWithFiltererRedundancy(ctx, logger, []*ethclient.Client{infura, alchemy})
+func TestLogsWithRedundancy(t *testing.T) {
 	logger := logging.NewLogger()
 	logging.ApplyFilter("debug", logger)
 	ctx := context.Background()
@@ -39,56 +45,188 @@ func TestSubscriptionWithRedundancy(t *testing.T) {
 
 	transactOpts, err := bind.NewKeyedTransactorWithChainID(sk, big.NewInt(1337))
 
-	var (
-		logFilterers []ethereum.LogFilterer
-		contactAddrs []common.Address
-		contracts    []*simple.SimpleStorage
-		backends     []*backends.SimulatedBackend
-	)
-	logsCount := 4
-	for i := 0; i < logsCount; i++ {
-		backend := getSimBackend(t, sk)
-		testutil.Ok(t, err)
-		addr, _, contract, err := simple.DeploySimpleStorage(transactOpts, backend)
-		testutil.Ok(t, err)
-		_, err = contract.Set(transactOpts, "1111")
-		testutil.Ok(t, err)
-		backend.Commit()
-		logFilterers = append(logFilterers, backend)
-		contactAddrs = append(contactAddrs, addr)
-		contracts = append(contracts, contract)
-		backends = append(backends, backend)
-	}
-
 	query := ethereum.FilterQuery{
 		FromBlock: nil,
 		ToBlock:   nil,
-		Addresses: contactAddrs,
 		Topics:    [][]common.Hash{{abi.Events["StorageSet"].ID}},
 	}
 
-	sink := make(chan types.Log)
+	// All backends have the same logs.
+	{
+		var (
+			logFilterers []ethereum.LogFilterer
+			contracts    []*simple.SimpleStorage
+			backends     []*backends.SimulatedBackend
+		)
+		for i := 0; i < 4; i++ {
+			backend := getSimBackend(t, sk)
+			_, _, contract, err := simple.DeploySimpleStorage(transactOpts, backend)
+			testutil.Ok(t, err)
+			_, err = contract.Set(transactOpts, "1111")
+			testutil.Ok(t, err)
+			backend.Commit()
+			logFilterers = append(logFilterers, backend)
+			contracts = append(contracts, contract)
+			backends = append(backends, backend)
+		}
 
-	subs, err := NewSubscriptionWithRedundancy(ctx, logger, logFilterers, query, sink)
-	defer subs.Unsubscribe()
+		filterer := NewContractFiltererWithRedundancy(ctx, logger, logFilterers)
 
-	level.Info(logger).Log("msg", "new log", "data", fmt.Sprintf("%+v", (<-sink)))
-	time.Sleep(time.Second)
+		logsExp, err := backends[0].FilterLogs(ctx, query)
+		logsAct, err := filterer.FilterLogs(ctx, query)
+		testutil.Ok(t, err)
+		testutil.Equals(t, logsExp, logsAct)
+	}
 
-	rcvd, sent := subs.(*SubscriptionWithRedundancy).EventsCount()
-	testutil.Equals(t, int64(logsCount), rcvd)
-	testutil.Equals(t, int64(1), sent)
+	// 2 backends have different logs.
+	{
+		backend1 := getSimBackend(t, sk)
+		_, _, contract1, err := simple.DeploySimpleStorage(transactOpts, backend1)
+		testutil.Ok(t, err)
 
-	_, err = contracts[0].Set(transactOpts, "2222")
-	testutil.Ok(t, err)
-	backends[0].Commit()
+		backend2 := getSimBackend(t, sk)
+		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
+		testutil.Ok(t, err)
 
-	level.Info(logger).Log("msg", "new log", "data", fmt.Sprintf("%+v", (<-sink)))
-	time.Sleep(time.Second)
+		filterer := NewContractFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
 
-	rcvd, sent = subs.(*SubscriptionWithRedundancy).EventsCount()
-	testutil.Equals(t, int64(logsCount+1), rcvd)
-	testutil.Equals(t, int64(2), sent)
+		_, err = contract1.Set(transactOpts, "aaaa")
+		testutil.Ok(t, err)
+		backend1.Commit()
+
+		logsExp, err := backend1.FilterLogs(ctx, query)
+		testutil.Ok(t, err)
+
+		_, err = contract2.Set(transactOpts, "bbbb")
+		testutil.Ok(t, err)
+		backend2.Commit()
+		logsExp1, err := backend2.FilterLogs(ctx, query)
+		testutil.Ok(t, err)
+
+		logsExp = append(logsExp, logsExp1...)
+
+		logsAct, err := filterer.FilterLogs(ctx, query)
+		testutil.Ok(t, err)
+
+		testutil.Equals(t, logsExp, logsAct)
+	}
+
+	// 2 backends one has one extra log.
+	{
+		backend1 := getSimBackend(t, sk)
+		_, _, contract1, err := simple.DeploySimpleStorage(transactOpts, backend1)
+		testutil.Ok(t, err)
+
+		backend2 := getSimBackend(t, sk)
+		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
+		testutil.Ok(t, err)
+
+		filterer := NewContractFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
+
+		_, err = contract1.Set(transactOpts, "aaaa")
+		testutil.Ok(t, err)
+		backend1.Commit()
+
+		_, err = contract2.Set(transactOpts, "aaaa")
+		testutil.Ok(t, err)
+		backend2.Commit()
+
+		_, err = contract2.Set(transactOpts, "bbbb")
+		testutil.Ok(t, err)
+		backend2.Commit()
+		logsExp, err := backend2.FilterLogs(ctx, query)
+		testutil.Ok(t, err)
+
+		logsAct, err := filterer.FilterLogs(ctx, query)
+		testutil.Ok(t, err)
+
+		testutil.Equals(t, logsExp, logsAct)
+	}
+
+	// Subscription with 2 backends both send the same logs.
+	{
+		backend1 := getSimBackend(t, sk)
+		_, _, contract1, err := simple.DeploySimpleStorage(transactOpts, backend1)
+		testutil.Ok(t, err)
+
+		backend2 := getSimBackend(t, sk)
+		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
+		testutil.Ok(t, err)
+
+		filterer := NewContractFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
+
+		ch := make(chan types.Log)
+		subs, err := filterer.SubscribeFilterLogs(ctx, query, ch)
+		testutil.Ok(t, err)
+		defer subs.Unsubscribe()
+
+		_, err = contract1.Set(transactOpts, "2222")
+		testutil.Ok(t, err)
+		backend1.Commit()
+
+		_, err = contract2.Set(transactOpts, "2222")
+		testutil.Ok(t, err)
+		backend2.Commit()
+
+		logsExp, err := filterer.FilterLogs(ctx, query)
+		testutil.Ok(t, err)
+
+		var logsAct []types.Log
+		logsAct = append(logsAct, <-ch)
+
+		testutil.Equals(t, logsExp, logsAct)
+
+		select {
+		case log := <-ch:
+			t.Fatalf("there is an extra log:%+v", log)
+		default:
+		}
+	}
+
+	// Subscription with 2 backends one is missing a log.
+	{
+		backend1 := getSimBackend(t, sk)
+		_, _, contract1, err := simple.DeploySimpleStorage(transactOpts, backend1)
+		testutil.Ok(t, err)
+
+		backend2 := getSimBackend(t, sk)
+		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
+		testutil.Ok(t, err)
+
+		filterer := NewContractFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
+
+		ch := make(chan types.Log)
+		subs, err := filterer.SubscribeFilterLogs(ctx, query, ch)
+		testutil.Ok(t, err)
+		defer subs.Unsubscribe()
+
+		_, err = contract1.Set(transactOpts, "2222")
+		testutil.Ok(t, err)
+		backend1.Commit()
+		_, err = contract2.Set(transactOpts, "2222")
+		testutil.Ok(t, err)
+		backend2.Commit()
+		_, err = contract2.Set(transactOpts, "3333")
+		testutil.Ok(t, err)
+		backend2.Commit()
+
+		logsExp, err := filterer.FilterLogs(ctx, query)
+		testutil.Ok(t, err)
+
+		var logsAct []types.Log
+
+		logsAct = append(logsAct, <-ch)
+		logsAct = append(logsAct, <-ch)
+
+		testutil.Equals(t, logsExp, logsAct)
+
+		select {
+		case log := <-ch:
+			t.Fatalf("there is an extra log:%+v", log)
+		default:
+		}
+	}
+
 }
 
 func getSimBackend(t *testing.T, sk *ecdsa.PrivateKey) *backends.SimulatedBackend {
