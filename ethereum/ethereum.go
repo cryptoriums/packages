@@ -396,14 +396,14 @@ func NewEthClientWithFiltererRedundancy(ctx context.Context, logger log.Logger, 
 	}
 	return &EthClientWithFiltererRedundancy{
 		Client:           clients[0],
-		ContractFilterer: NewContractFiltererWithRedundancy(ctx, logger, filterers),
+		ContractFilterer: NewLogFiltererWithRedundancy(ctx, logger, filterers),
 	}
 }
 
-// NewContractFiltererWithRedundancy creates a ContractFilterer that can use multiple backends and it ensures that the same logs is never sent twice.
-func NewContractFiltererWithRedundancy(ctx context.Context, logger log.Logger, logFilterers []ethereum.LogFilterer) bind.ContractFilterer {
+// NewLogFiltererWithRedundancy creates a ContractFilterer that can use multiple backends and it ensures that the same logs is never sent twice.
+func NewLogFiltererWithRedundancy(ctx context.Context, logger log.Logger, logFilterers []ethereum.LogFilterer) ethereum.LogFilterer {
 	ctx, cncl := context.WithCancel(ctx)
-	return &ContractFiltererWithRedundancy{
+	return &LogFiltererWithRedundancy{
 		ctx:          ctx,
 		cncl:         cncl,
 		logger:       logger,
@@ -414,7 +414,7 @@ func NewContractFiltererWithRedundancy(ctx context.Context, logger log.Logger, l
 	}
 }
 
-type ContractFiltererWithRedundancy struct {
+type LogFiltererWithRedundancy struct {
 	ctx          context.Context
 	mtx          sync.Mutex
 	logger       log.Logger
@@ -427,7 +427,7 @@ type ContractFiltererWithRedundancy struct {
 	logFilterers []ethereum.LogFilterer
 }
 
-func (self *ContractFiltererWithRedundancy) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
+func (self *LogFiltererWithRedundancy) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
 	cache := gcache.New(1000).LRU().Build()
 	var logsAll [][]types.Log
 	for _, logFilterer := range self.logFilterers {
@@ -475,21 +475,21 @@ func (self *ContractFiltererWithRedundancy) FilterLogs(ctx context.Context, quer
 	return logsDeduped, nil
 }
 
-func (self *ContractFiltererWithRedundancy) isCached(cache gcache.Cache, log types.Log) bool {
+func (self *LogFiltererWithRedundancy) isCached(cache gcache.Cache, log types.Log) bool {
 	hash := HashFromLogAllFields(log)
 	_, err := cache.Get(hash)
 
 	return err != gcache.KeyNotFoundError
 }
 
-func (self *ContractFiltererWithRedundancy) cache(cache gcache.Cache, log types.Log) {
+func (self *LogFiltererWithRedundancy) cache(cache gcache.Cache, log types.Log) {
 	hash := HashFromLogAllFields(log)
 	if err := cache.Set(hash, true); err != nil {
 		level.Error(self.logger).Log("msg", "adding tx event cache", "err", err)
 	}
 }
 
-func (self *ContractFiltererWithRedundancy) SubscribeFilterLogs(ctx context.Context, query ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
+func (self *LogFiltererWithRedundancy) SubscribeFilterLogs(ctx context.Context, query ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
 	go func() {
 		for log := range self.chAll {
 			if self.isCached(self.cacheSentTXs, log) {
@@ -537,7 +537,7 @@ func (self *ContractFiltererWithRedundancy) SubscribeFilterLogs(ctx context.Cont
 	return self, nil
 }
 
-func (self *ContractFiltererWithRedundancy) Unsubscribe() {
+func (self *LogFiltererWithRedundancy) Unsubscribe() {
 	self.mtx.Lock()
 	defer self.mtx.Unlock()
 	for _, sub := range self.subs {
@@ -547,7 +547,7 @@ func (self *ContractFiltererWithRedundancy) Unsubscribe() {
 	self.cncl()
 }
 
-func (self *ContractFiltererWithRedundancy) Err() <-chan error {
+func (self *LogFiltererWithRedundancy) Err() <-chan error {
 	return self.err
 }
 

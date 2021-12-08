@@ -70,7 +70,7 @@ func TestLogsWithRedundancy(t *testing.T) {
 			backends = append(backends, backend)
 		}
 
-		filterer := NewContractFiltererWithRedundancy(ctx, logger, logFilterers)
+		filterer := NewLogFiltererWithRedundancy(ctx, logger, logFilterers)
 
 		logsExp, err := backends[0].FilterLogs(ctx, query)
 		logsAct, err := filterer.FilterLogs(ctx, query)
@@ -88,7 +88,7 @@ func TestLogsWithRedundancy(t *testing.T) {
 		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
 		testutil.Ok(t, err)
 
-		filterer := NewContractFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
+		filterer := NewLogFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
 
 		_, err = contract1.Set(transactOpts, "aaaa")
 		testutil.Ok(t, err)
@@ -121,7 +121,7 @@ func TestLogsWithRedundancy(t *testing.T) {
 		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
 		testutil.Ok(t, err)
 
-		filterer := NewContractFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
+		filterer := NewLogFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
 
 		_, err = contract1.Set(transactOpts, "aaaa")
 		testutil.Ok(t, err)
@@ -153,7 +153,7 @@ func TestLogsWithRedundancy(t *testing.T) {
 		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
 		testutil.Ok(t, err)
 
-		filterer := NewContractFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
+		filterer := NewLogFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
 
 		ch := make(chan types.Log)
 		subs, err := filterer.SubscribeFilterLogs(ctx, query, ch)
@@ -193,7 +193,7 @@ func TestLogsWithRedundancy(t *testing.T) {
 		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
 		testutil.Ok(t, err)
 
-		filterer := NewContractFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
+		filterer := NewLogFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
 
 		ch := make(chan types.Log)
 		subs, err := filterer.SubscribeFilterLogs(ctx, query, ch)
