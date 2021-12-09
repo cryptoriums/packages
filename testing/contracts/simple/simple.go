@@ -30,12 +30,14 @@ var (
 
 // SimpleStorageMetaData contains all meta data concerning the SimpleStorage contract.
 var SimpleStorageMetaData = &bind.MetaData{
-	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"name\":\"StorageSet\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"get\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"x\",\"type\":\"string\"}],\"name\":\"set\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"NewString\",\"type\":\"string\"}],\"name\":\"StorageSetA\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"NewString\",\"type\":\"string\"}],\"name\":\"StorageSetB\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"getA\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getB\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"x\",\"type\":\"string\"}],\"name\":\"setA\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"x\",\"type\":\"string\"}],\"name\":\"setB\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
 	Sigs: map[string]string{
-		"6d4ce63c": "get()",
-		"4ed3885e": "set(string)",
+		"d46300fd": "getA()",
+		"a1c51915": "getB()",
+		"b958abd5": "setA(string)",
+		"b5e7bc60": "setB(string)",
 	},
-	Bin: "0x608060405234801561001057600080fd5b50610374806100206000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80634ed3885e1461003b5780636d4ce63c14610050575b600080fd5b61004e6100493660046101fd565b61006e565b005b6100586100bc565b60405161006591906102ae565b60405180910390f35b805161008190600090602084019061014e565b507f60cdc157ca4737a5d39a0e107532616e7bf6946e615228812c7f9bc9f81797a6816040516100b191906102ae565b60405180910390a150565b6060600080546100cb90610303565b80601f01602080910402602001604051908101604052809291908181526020018280546100f790610303565b80156101445780601f1061011957610100808354040283529160200191610144565b820191906000526020600020905b81548152906001019060200180831161012757829003601f168201915b5050505050905090565b82805461015a90610303565b90600052602060002090601f01602090048101928261017c57600085556101c2565b82601f1061019557805160ff19168380011785556101c2565b828001600101855582156101c2579182015b828111156101c25782518255916020019190600101906101a7565b506101ce9291506101d2565b5090565b5b808211156101ce57600081556001016101d3565b634e487b7160e01b600052604160045260246000fd5b60006020828403121561020f57600080fd5b813567ffffffffffffffff8082111561022757600080fd5b818401915084601f83011261023b57600080fd5b81358181111561024d5761024d6101e7565b604051601f8201601f19908116603f01168101908382118183101715610275576102756101e7565b8160405282815287602084870101111561028e57600080fd5b826020860160208301376000928101602001929092525095945050505050565b600060208083528351808285015260005b818110156102db578581018301518582016040015282016102bf565b818111156102ed576000604083870101525b50601f01601f1916929092016040019392505050565b600181811c9082168061031757607f821691505b6020821081141561033857634e487b7160e01b600052602260045260246000fd5b5091905056fea26469706673582212206e2edd1110079e40519c07d414dbebe9516dd3ce44fa505d73d872316ffa151264736f6c634300080a0033",
+	Bin: "0x608060405234801561001057600080fd5b506103f7806100206000396000f3fe608060405234801561001057600080fd5b506004361061004c5760003560e01c8063a1c5191514610051578063b5e7bc601461006f578063b958abd514610084578063d46300fd14610097575b600080fd5b61005961009f565b604051610066919061026a565b60405180910390f35b61008261007d3660046102d5565b610131565b005b6100826100923660046102d5565b61017f565b6100596101c2565b6060600180546100ae90610386565b80601f01602080910402602001604051908101604052809291908181526020018280546100da90610386565b80156101275780601f106100fc57610100808354040283529160200191610127565b820191906000526020600020905b81548152906001019060200180831161010a57829003601f168201915b5050505050905090565b80516101449060019060208401906101d1565b507fffad11ecb618b0f8f566637fe9991a6c3ec300a88293e7e9e68ddcee51b861b581604051610174919061026a565b60405180910390a150565b80516101929060009060208401906101d1565b507fe394429e5515af0c383c3d1fc989369cfcce852ba8bc8300b01b64bfdb3d18be81604051610174919061026a565b6060600080546100ae90610386565b8280546101dd90610386565b90600052602060002090601f0160209004810192826101ff5760008555610245565b82601f1061021857805160ff1916838001178555610245565b82800160010185558215610245579182015b8281111561024557825182559160200191906001019061022a565b50610251929150610255565b5090565b5b808211156102515760008155600101610256565b600060208083528351808285015260005b818110156102975785810183015185820160400152820161027b565b818111156102a9576000604083870101525b50601f01601f1916929092016040019392505050565b634e487b7160e01b600052604160045260246000fd5b6000602082840312156102e757600080fd5b813567ffffffffffffffff808211156102ff57600080fd5b818401915084601f83011261031357600080fd5b813581811115610325576103256102bf565b604051601f8201601f19908116603f0116810190838211818310171561034d5761034d6102bf565b8160405282815287602084870101111561036657600080fd5b826020860160208301376000928101602001929092525095945050505050565b600181811c9082168061039a57607f821691505b602082108114156103bb57634e487b7160e01b600052602260045260246000fd5b5091905056fea264697066735822122008abdf4e0afc24dceb511e10ab7d164f2d81b895c100c4fc76d4ce2db8ce2ce464736f6c634300080a0033",
 }
 
 // SimpleStorageABI is the input ABI used to generate the binding from.
@@ -209,12 +211,12 @@ func (_SimpleStorage *SimpleStorageTransactorRaw) Transact(opts *bind.TransactOp
 	return _SimpleStorage.Contract.contract.Transact(opts, method, params...)
 }
 
-// Get is a free data retrieval call binding the contract method 0x6d4ce63c.
+// GetA is a free data retrieval call binding the contract method 0xd46300fd.
 //
-// Solidity: function get() view returns(string)
-func (_SimpleStorage *SimpleStorageCaller) Get(opts *bind.CallOpts) (string, error) {
+// Solidity: function getA() view returns(string)
+func (_SimpleStorage *SimpleStorageCaller) GetA(opts *bind.CallOpts) (string, error) {
 	var out []interface{}
-	err := _SimpleStorage.contract.Call(opts, &out, "get")
+	err := _SimpleStorage.contract.Call(opts, &out, "getA")
 
 	if err != nil {
 		return *new(string), err
@@ -226,44 +228,96 @@ func (_SimpleStorage *SimpleStorageCaller) Get(opts *bind.CallOpts) (string, err
 
 }
 
-// Get is a free data retrieval call binding the contract method 0x6d4ce63c.
+// GetA is a free data retrieval call binding the contract method 0xd46300fd.
 //
-// Solidity: function get() view returns(string)
-func (_SimpleStorage *SimpleStorageSession) Get() (string, error) {
-	return _SimpleStorage.Contract.Get(&_SimpleStorage.CallOpts)
+// Solidity: function getA() view returns(string)
+func (_SimpleStorage *SimpleStorageSession) GetA() (string, error) {
+	return _SimpleStorage.Contract.GetA(&_SimpleStorage.CallOpts)
 }
 
-// Get is a free data retrieval call binding the contract method 0x6d4ce63c.
+// GetA is a free data retrieval call binding the contract method 0xd46300fd.
 //
-// Solidity: function get() view returns(string)
-func (_SimpleStorage *SimpleStorageCallerSession) Get() (string, error) {
-	return _SimpleStorage.Contract.Get(&_SimpleStorage.CallOpts)
+// Solidity: function getA() view returns(string)
+func (_SimpleStorage *SimpleStorageCallerSession) GetA() (string, error) {
+	return _SimpleStorage.Contract.GetA(&_SimpleStorage.CallOpts)
 }
 
-// Set is a paid mutator transaction binding the contract method 0x4ed3885e.
+// GetB is a free data retrieval call binding the contract method 0xa1c51915.
 //
-// Solidity: function set(string x) returns()
-func (_SimpleStorage *SimpleStorageTransactor) Set(opts *bind.TransactOpts, x string) (*types.Transaction, error) {
-	return _SimpleStorage.contract.Transact(opts, "set", x)
+// Solidity: function getB() view returns(string)
+func (_SimpleStorage *SimpleStorageCaller) GetB(opts *bind.CallOpts) (string, error) {
+	var out []interface{}
+	err := _SimpleStorage.contract.Call(opts, &out, "getB")
+
+	if err != nil {
+		return *new(string), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(string)).(*string)
+
+	return out0, err
+
 }
 
-// Set is a paid mutator transaction binding the contract method 0x4ed3885e.
+// GetB is a free data retrieval call binding the contract method 0xa1c51915.
 //
-// Solidity: function set(string x) returns()
-func (_SimpleStorage *SimpleStorageSession) Set(x string) (*types.Transaction, error) {
-	return _SimpleStorage.Contract.Set(&_SimpleStorage.TransactOpts, x)
+// Solidity: function getB() view returns(string)
+func (_SimpleStorage *SimpleStorageSession) GetB() (string, error) {
+	return _SimpleStorage.Contract.GetB(&_SimpleStorage.CallOpts)
 }
 
-// Set is a paid mutator transaction binding the contract method 0x4ed3885e.
+// GetB is a free data retrieval call binding the contract method 0xa1c51915.
 //
-// Solidity: function set(string x) returns()
-func (_SimpleStorage *SimpleStorageTransactorSession) Set(x string) (*types.Transaction, error) {
-	return _SimpleStorage.Contract.Set(&_SimpleStorage.TransactOpts, x)
+// Solidity: function getB() view returns(string)
+func (_SimpleStorage *SimpleStorageCallerSession) GetB() (string, error) {
+	return _SimpleStorage.Contract.GetB(&_SimpleStorage.CallOpts)
 }
 
-// SimpleStorageStorageSetIterator is returned from FilterStorageSet and is used to iterate over the raw logs and unpacked data for StorageSet events raised by the SimpleStorage contract.
-type SimpleStorageStorageSetIterator struct {
-	Event *SimpleStorageStorageSet // Event containing the contract specifics and raw log
+// SetA is a paid mutator transaction binding the contract method 0xb958abd5.
+//
+// Solidity: function setA(string x) returns()
+func (_SimpleStorage *SimpleStorageTransactor) SetA(opts *bind.TransactOpts, x string) (*types.Transaction, error) {
+	return _SimpleStorage.contract.Transact(opts, "setA", x)
+}
+
+// SetA is a paid mutator transaction binding the contract method 0xb958abd5.
+//
+// Solidity: function setA(string x) returns()
+func (_SimpleStorage *SimpleStorageSession) SetA(x string) (*types.Transaction, error) {
+	return _SimpleStorage.Contract.SetA(&_SimpleStorage.TransactOpts, x)
+}
+
+// SetA is a paid mutator transaction binding the contract method 0xb958abd5.
+//
+// Solidity: function setA(string x) returns()
+func (_SimpleStorage *SimpleStorageTransactorSession) SetA(x string) (*types.Transaction, error) {
+	return _SimpleStorage.Contract.SetA(&_SimpleStorage.TransactOpts, x)
+}
+
+// SetB is a paid mutator transaction binding the contract method 0xb5e7bc60.
+//
+// Solidity: function setB(string x) returns()
+func (_SimpleStorage *SimpleStorageTransactor) SetB(opts *bind.TransactOpts, x string) (*types.Transaction, error) {
+	return _SimpleStorage.contract.Transact(opts, "setB", x)
+}
+
+// SetB is a paid mutator transaction binding the contract method 0xb5e7bc60.
+//
+// Solidity: function setB(string x) returns()
+func (_SimpleStorage *SimpleStorageSession) SetB(x string) (*types.Transaction, error) {
+	return _SimpleStorage.Contract.SetB(&_SimpleStorage.TransactOpts, x)
+}
+
+// SetB is a paid mutator transaction binding the contract method 0xb5e7bc60.
+//
+// Solidity: function setB(string x) returns()
+func (_SimpleStorage *SimpleStorageTransactorSession) SetB(x string) (*types.Transaction, error) {
+	return _SimpleStorage.Contract.SetB(&_SimpleStorage.TransactOpts, x)
+}
+
+// SimpleStorageStorageSetAIterator is returned from FilterStorageSetA and is used to iterate over the raw logs and unpacked data for StorageSetA events raised by the SimpleStorage contract.
+type SimpleStorageStorageSetAIterator struct {
+	Event *SimpleStorageStorageSetA // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -277,7 +331,7 @@ type SimpleStorageStorageSetIterator struct {
 // Next advances the iterator to the subsequent event, returning whether there
 // are any more events found. In case of a retrieval or parsing error, false is
 // returned and Error() can be queried for the exact failure.
-func (it *SimpleStorageStorageSetIterator) Next() bool {
+func (it *SimpleStorageStorageSetAIterator) Next() bool {
 	// If the iterator failed, stop iterating
 	if it.fail != nil {
 		return false
@@ -286,7 +340,7 @@ func (it *SimpleStorageStorageSetIterator) Next() bool {
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(SimpleStorageStorageSet)
+			it.Event = new(SimpleStorageStorageSetA)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -301,7 +355,7 @@ func (it *SimpleStorageStorageSetIterator) Next() bool {
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(SimpleStorageStorageSet)
+		it.Event = new(SimpleStorageStorageSetA)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -317,41 +371,41 @@ func (it *SimpleStorageStorageSetIterator) Next() bool {
 }
 
 // Error returns any retrieval or parsing error occurred during filtering.
-func (it *SimpleStorageStorageSetIterator) Error() error {
+func (it *SimpleStorageStorageSetAIterator) Error() error {
 	return it.fail
 }
 
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
-func (it *SimpleStorageStorageSetIterator) Close() error {
+func (it *SimpleStorageStorageSetAIterator) Close() error {
 	it.sub.Unsubscribe()
 	return nil
 }
 
-// SimpleStorageStorageSet represents a StorageSet event raised by the SimpleStorage contract.
-type SimpleStorageStorageSet struct {
-	Arg0 string
-	Raw  types.Log // Blockchain specific contextual infos
+// SimpleStorageStorageSetA represents a StorageSetA event raised by the SimpleStorage contract.
+type SimpleStorageStorageSetA struct {
+	NewString string
+	Raw       types.Log // Blockchain specific contextual infos
 }
 
-// FilterStorageSet is a free log retrieval operation binding the contract event 0x60cdc157ca4737a5d39a0e107532616e7bf6946e615228812c7f9bc9f81797a6.
+// FilterStorageSetA is a free log retrieval operation binding the contract event 0xe394429e5515af0c383c3d1fc989369cfcce852ba8bc8300b01b64bfdb3d18be.
 //
-// Solidity: event StorageSet(string arg0)
-func (_SimpleStorage *SimpleStorageFilterer) FilterStorageSet(opts *bind.FilterOpts) (*SimpleStorageStorageSetIterator, error) {
+// Solidity: event StorageSetA(string NewString)
+func (_SimpleStorage *SimpleStorageFilterer) FilterStorageSetA(opts *bind.FilterOpts) (*SimpleStorageStorageSetAIterator, error) {
 
-	logs, sub, err := _SimpleStorage.contract.FilterLogs(opts, "StorageSet")
+	logs, sub, err := _SimpleStorage.contract.FilterLogs(opts, "StorageSetA")
 	if err != nil {
 		return nil, err
 	}
-	return &SimpleStorageStorageSetIterator{contract: _SimpleStorage.contract, event: "StorageSet", logs: logs, sub: sub}, nil
+	return &SimpleStorageStorageSetAIterator{contract: _SimpleStorage.contract, event: "StorageSetA", logs: logs, sub: sub}, nil
 }
 
-// WatchStorageSet is a free log subscription operation binding the contract event 0x60cdc157ca4737a5d39a0e107532616e7bf6946e615228812c7f9bc9f81797a6.
+// WatchStorageSetA is a free log subscription operation binding the contract event 0xe394429e5515af0c383c3d1fc989369cfcce852ba8bc8300b01b64bfdb3d18be.
 //
-// Solidity: event StorageSet(string arg0)
-func (_SimpleStorage *SimpleStorageFilterer) WatchStorageSet(opts *bind.WatchOpts, sink chan<- *SimpleStorageStorageSet) (event.Subscription, error) {
+// Solidity: event StorageSetA(string NewString)
+func (_SimpleStorage *SimpleStorageFilterer) WatchStorageSetA(opts *bind.WatchOpts, sink chan<- *SimpleStorageStorageSetA) (event.Subscription, error) {
 
-	logs, sub, err := _SimpleStorage.contract.WatchLogs(opts, "StorageSet")
+	logs, sub, err := _SimpleStorage.contract.WatchLogs(opts, "StorageSetA")
 	if err != nil {
 		return nil, err
 	}
@@ -361,8 +415,8 @@ func (_SimpleStorage *SimpleStorageFilterer) WatchStorageSet(opts *bind.WatchOpt
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(SimpleStorageStorageSet)
-				if err := _SimpleStorage.contract.UnpackLog(event, "StorageSet", log); err != nil {
+				event := new(SimpleStorageStorageSetA)
+				if err := _SimpleStorage.contract.UnpackLog(event, "StorageSetA", log); err != nil {
 					return err
 				}
 				event.Raw = log
@@ -383,12 +437,146 @@ func (_SimpleStorage *SimpleStorageFilterer) WatchStorageSet(opts *bind.WatchOpt
 	}), nil
 }
 
-// ParseStorageSet is a log parse operation binding the contract event 0x60cdc157ca4737a5d39a0e107532616e7bf6946e615228812c7f9bc9f81797a6.
+// ParseStorageSetA is a log parse operation binding the contract event 0xe394429e5515af0c383c3d1fc989369cfcce852ba8bc8300b01b64bfdb3d18be.
 //
-// Solidity: event StorageSet(string arg0)
-func (_SimpleStorage *SimpleStorageFilterer) ParseStorageSet(log types.Log) (*SimpleStorageStorageSet, error) {
-	event := new(SimpleStorageStorageSet)
-	if err := _SimpleStorage.contract.UnpackLog(event, "StorageSet", log); err != nil {
+// Solidity: event StorageSetA(string NewString)
+func (_SimpleStorage *SimpleStorageFilterer) ParseStorageSetA(log types.Log) (*SimpleStorageStorageSetA, error) {
+	event := new(SimpleStorageStorageSetA)
+	if err := _SimpleStorage.contract.UnpackLog(event, "StorageSetA", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// SimpleStorageStorageSetBIterator is returned from FilterStorageSetB and is used to iterate over the raw logs and unpacked data for StorageSetB events raised by the SimpleStorage contract.
+type SimpleStorageStorageSetBIterator struct {
+	Event *SimpleStorageStorageSetB // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *SimpleStorageStorageSetBIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(SimpleStorageStorageSetB)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(SimpleStorageStorageSetB)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *SimpleStorageStorageSetBIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *SimpleStorageStorageSetBIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// SimpleStorageStorageSetB represents a StorageSetB event raised by the SimpleStorage contract.
+type SimpleStorageStorageSetB struct {
+	NewString string
+	Raw       types.Log // Blockchain specific contextual infos
+}
+
+// FilterStorageSetB is a free log retrieval operation binding the contract event 0xffad11ecb618b0f8f566637fe9991a6c3ec300a88293e7e9e68ddcee51b861b5.
+//
+// Solidity: event StorageSetB(string NewString)
+func (_SimpleStorage *SimpleStorageFilterer) FilterStorageSetB(opts *bind.FilterOpts) (*SimpleStorageStorageSetBIterator, error) {
+
+	logs, sub, err := _SimpleStorage.contract.FilterLogs(opts, "StorageSetB")
+	if err != nil {
+		return nil, err
+	}
+	return &SimpleStorageStorageSetBIterator{contract: _SimpleStorage.contract, event: "StorageSetB", logs: logs, sub: sub}, nil
+}
+
+// WatchStorageSetB is a free log subscription operation binding the contract event 0xffad11ecb618b0f8f566637fe9991a6c3ec300a88293e7e9e68ddcee51b861b5.
+//
+// Solidity: event StorageSetB(string NewString)
+func (_SimpleStorage *SimpleStorageFilterer) WatchStorageSetB(opts *bind.WatchOpts, sink chan<- *SimpleStorageStorageSetB) (event.Subscription, error) {
+
+	logs, sub, err := _SimpleStorage.contract.WatchLogs(opts, "StorageSetB")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(SimpleStorageStorageSetB)
+				if err := _SimpleStorage.contract.UnpackLog(event, "StorageSetB", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseStorageSetB is a log parse operation binding the contract event 0xffad11ecb618b0f8f566637fe9991a6c3ec300a88293e7e9e68ddcee51b861b5.
+//
+// Solidity: event StorageSetB(string NewString)
+func (_SimpleStorage *SimpleStorageFilterer) ParseStorageSetB(log types.Log) (*SimpleStorageStorageSetB, error) {
+	event := new(SimpleStorageStorageSetB)
+	if err := _SimpleStorage.contract.UnpackLog(event, "StorageSetB", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log

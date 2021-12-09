@@ -1,13 +1,15 @@
 // Copyright (c) The Cryptorium Authors.
 // Licensed under the MIT License.
 
-package ethereum
+package events
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/cryptoriums/packages/logging"
 	"github.com/cryptoriums/packages/testing/contracts/simple"
@@ -50,7 +52,7 @@ func TestLogsWithRedundancy(t *testing.T) {
 	query := ethereum.FilterQuery{
 		FromBlock: nil,
 		ToBlock:   nil,
-		Topics:    [][]common.Hash{{abi.Events["StorageSet"].ID}},
+		Topics:    [][]common.Hash{{abi.Events["StorageSetA"].ID}},
 	}
 
 	// All backends have the same logs.
@@ -64,7 +66,7 @@ func TestLogsWithRedundancy(t *testing.T) {
 			backend := getSimBackend(t, sk)
 			_, _, contract, err := simple.DeploySimpleStorage(transactOpts, backend)
 			testutil.Ok(t, err)
-			_, err = contract.Set(transactOpts, "1111")
+			_, err = contract.SetA(transactOpts, "1111")
 			testutil.Ok(t, err)
 			backend.Commit()
 			logFilterers = append(logFilterers, backend)
@@ -72,7 +74,7 @@ func TestLogsWithRedundancy(t *testing.T) {
 			backends = append(backends, backend)
 		}
 
-		filterer := NewLogFiltererWithRedundancy(ctx, logger, logFilterers)
+		filterer := NewLogFiltererWithRedundancy(logger, logFilterers)
 
 		logsExp, err := backends[0].FilterLogs(ctx, query)
 		logsAct, err := filterer.FilterLogs(ctx, query)
@@ -90,16 +92,16 @@ func TestLogsWithRedundancy(t *testing.T) {
 		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
 		testutil.Ok(t, err)
 
-		filterer := NewLogFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
+		filterer := NewLogFiltererWithRedundancy(logger, []ethereum.LogFilterer{backend1, backend2})
 
-		_, err = contract1.Set(transactOpts, "aaaa")
+		_, err = contract1.SetA(transactOpts, "aaaa")
 		testutil.Ok(t, err)
 		backend1.Commit()
 
 		logsExp, err := backend1.FilterLogs(ctx, query)
 		testutil.Ok(t, err)
 
-		_, err = contract2.Set(transactOpts, "bbbb")
+		_, err = contract2.SetA(transactOpts, "bbbb")
 		testutil.Ok(t, err)
 		backend2.Commit()
 		logsExp1, err := backend2.FilterLogs(ctx, query)
@@ -123,17 +125,17 @@ func TestLogsWithRedundancy(t *testing.T) {
 		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
 		testutil.Ok(t, err)
 
-		filterer := NewLogFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
+		filterer := NewLogFiltererWithRedundancy(logger, []ethereum.LogFilterer{backend1, backend2})
 
-		_, err = contract1.Set(transactOpts, "aaaa")
+		_, err = contract1.SetA(transactOpts, "aaaa")
 		testutil.Ok(t, err)
 		backend1.Commit()
 
-		_, err = contract2.Set(transactOpts, "aaaa")
+		_, err = contract2.SetA(transactOpts, "aaaa")
 		testutil.Ok(t, err)
 		backend2.Commit()
 
-		_, err = contract2.Set(transactOpts, "bbbb")
+		_, err = contract2.SetA(transactOpts, "bbbb")
 		testutil.Ok(t, err)
 		backend2.Commit()
 		logsExp, err := backend2.FilterLogs(ctx, query)
@@ -155,18 +157,18 @@ func TestLogsWithRedundancy(t *testing.T) {
 		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
 		testutil.Ok(t, err)
 
-		filterer := NewLogFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
+		filterer := NewLogFiltererWithRedundancy(logger, []ethereum.LogFilterer{backend1, backend2})
 
 		ch := make(chan types.Log)
 		subs, err := filterer.SubscribeFilterLogs(ctx, query, ch)
 		testutil.Ok(t, err)
 		defer subs.Unsubscribe()
 
-		_, err = contract1.Set(transactOpts, "2222")
+		_, err = contract1.SetA(transactOpts, "2222")
 		testutil.Ok(t, err)
 		backend1.Commit()
 
-		_, err = contract2.Set(transactOpts, "2222")
+		_, err = contract2.SetA(transactOpts, "2222")
 		testutil.Ok(t, err)
 		backend2.Commit()
 
@@ -195,20 +197,20 @@ func TestLogsWithRedundancy(t *testing.T) {
 		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
 		testutil.Ok(t, err)
 
-		filterer := NewLogFiltererWithRedundancy(ctx, logger, []ethereum.LogFilterer{backend1, backend2})
+		filterer := NewLogFiltererWithRedundancy(logger, []ethereum.LogFilterer{backend1, backend2})
 
 		ch := make(chan types.Log)
 		subs, err := filterer.SubscribeFilterLogs(ctx, query, ch)
 		testutil.Ok(t, err)
 		defer subs.Unsubscribe()
 
-		_, err = contract1.Set(transactOpts, "2222")
+		_, err = contract1.SetA(transactOpts, "2222")
 		testutil.Ok(t, err)
 		backend1.Commit()
-		_, err = contract2.Set(transactOpts, "2222")
+		_, err = contract2.SetA(transactOpts, "2222")
 		testutil.Ok(t, err)
 		backend2.Commit()
-		_, err = contract2.Set(transactOpts, "3333")
+		_, err = contract2.SetA(transactOpts, "3333")
 		testutil.Ok(t, err)
 		backend2.Commit()
 
@@ -228,6 +230,128 @@ func TestLogsWithRedundancy(t *testing.T) {
 		default:
 		}
 	}
+
+}
+
+func TestMultipleSubsDeduplication(t *testing.T) {
+	logger := logging.NewLogger()
+	logging.ApplyFilter("debug", logger)
+	ctx := context.Background()
+
+	abi, err := abi.JSON(strings.NewReader(simple.SimpleStorageABI))
+	testutil.Ok(t, err)
+
+	sk, err := crypto.GenerateKey()
+	testutil.Ok(t, err)
+
+	transactOpts, err := bind.NewKeyedTransactorWithChainID(sk, big.NewInt(1337))
+
+	queryA := ethereum.FilterQuery{
+		FromBlock: nil,
+		ToBlock:   nil,
+		Topics:    [][]common.Hash{{abi.Events["StorageSetA"].ID}},
+	}
+
+	queryB := ethereum.FilterQuery{
+		FromBlock: nil,
+		ToBlock:   nil,
+		Topics:    [][]common.Hash{{abi.Events["StorageSetB"].ID}},
+	}
+
+	// Different subscropitons shouldn't send to the same channel.
+	{
+
+		backend := getSimBackend(t, sk)
+		_, _, contract, err := simple.DeploySimpleStorage(transactOpts, backend)
+		testutil.Ok(t, err)
+
+		filterer := NewLogFiltererWithRedundancy(logger, []ethereum.LogFilterer{backend})
+
+		chA := make(chan types.Log)
+		subs, err := filterer.SubscribeFilterLogs(ctx, queryA, chA)
+		testutil.Ok(t, err)
+		defer subs.Unsubscribe()
+
+		chB := make(chan types.Log)
+		subs, err = filterer.SubscribeFilterLogs(ctx, queryB, chB)
+		testutil.Ok(t, err)
+		defer subs.Unsubscribe()
+
+		_, err = contract.SetA(transactOpts, "aaaa1")
+		testutil.Ok(t, err)
+		backend.Commit()
+		_, err = contract.SetA(transactOpts, "aaaa2")
+		testutil.Ok(t, err)
+		backend.Commit()
+
+		_, err = contract.SetB(transactOpts, "bbbb1")
+		testutil.Ok(t, err)
+		backend.Commit()
+		_, err = contract.SetB(transactOpts, "bbbb2")
+		testutil.Ok(t, err)
+		backend.Commit()
+		_, err = contract.SetB(transactOpts, "bbbb3")
+		testutil.Ok(t, err)
+		backend.Commit()
+
+		logsExpA, err := filterer.FilterLogs(ctx, queryA)
+		testutil.Ok(t, err)
+
+		logsActA := []types.Log{<-chA, <-chA}
+
+		testutil.Equals(t, logsExpA, logsActA)
+		select {
+		case log := <-chA:
+			t.Fatalf("there is an extra log:%+v", log)
+		default:
+		}
+	}
+
+	// Ensure that the err channel receives an error when the subs is unsubscribed.
+	{
+
+		filterer := NewLogFiltererWithRedundancy(logger, []ethereum.LogFilterer{NewBackendSimulateErr()})
+
+		subs, err := filterer.SubscribeFilterLogs(ctx, ethereum.FilterQuery{}, nil)
+		testutil.Ok(t, err)
+
+		time.Sleep(time.Second)
+		select {
+		case <-subs.Err():
+		default:
+			t.Fatalf("no error was received")
+		}
+
+	}
+}
+
+func NewBackendSimulateErr() *BackendSimulateErr {
+	e := make(chan error)
+	go func() {
+		e <- errors.New("xxx")
+	}()
+	return &BackendSimulateErr{
+		err: e,
+	}
+}
+
+type BackendSimulateErr struct {
+	err <-chan error
+}
+
+func (self *BackendSimulateErr) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
+	return nil, nil
+}
+
+func (self *BackendSimulateErr) SubscribeFilterLogs(ctx context.Context, query ethereum.FilterQuery, chDst chan<- types.Log) (ethereum.Subscription, error) {
+	return self, nil
+}
+
+func (self *BackendSimulateErr) Err() <-chan error {
+	return self.err
+}
+
+func (self *BackendSimulateErr) Unsubscribe() {
 
 }
 

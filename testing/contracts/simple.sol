@@ -5,15 +5,26 @@
 pragma solidity 0.8.10;
 
 contract SimpleStorage {
-    string ipfsHash;
-    event StorageSet(string NewString);
+    string a;
+    string b;
+    event StorageSetA(string NewString);
+    event StorageSetB(string NewString);
 
-    function set(string memory x) public {
-        ipfsHash = x;
-        emit StorageSet(x);
+    function setA(string memory x) public {
+        a = x;
+        emit StorageSetA(x);
     }
 
-    function get() public view returns (string memory) {
-        return ipfsHash;
+    function setB(string memory x) public {
+        b = x;
+        emit StorageSetB(x);
+    }
+
+    function getA() public view returns (string memory) {
+        return a;
+    }
+
+    function getB() public view returns (string memory) {
+        return b;
     }
 }
