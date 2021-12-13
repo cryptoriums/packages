@@ -255,6 +255,7 @@ func NewSignedTX(
 	args []interface{},
 	gasLimit uint64,
 	gasMaxFee float64,
+	gasTip float64,
 	value float64,
 ) (*types.Transaction, string, error) {
 
@@ -293,7 +294,7 @@ func NewSignedTX(
 		ChainID:   big.NewInt(netID),
 		Nonce:     nonce,
 		GasFeeCap: math_t.FloatToBigIntMul(gasMaxFee, params.GWei),
-		GasTipCap: math_t.FloatToBigIntMul(gasMaxFee, params.GWei),
+		GasTipCap: math_t.FloatToBigIntMul(gasTip, params.GWei),
 		Gas:       gasLimit,
 		To:        &to,
 		Data:      data,
