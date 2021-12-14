@@ -41,3 +41,10 @@ func ApplyFilter(configLevel string, logger log.Logger) (log.Logger, error) {
 
 	return level.NewFilter(logger, lvl), nil
 }
+
+func ExitOnError(logger log.Logger, err error) {
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+}

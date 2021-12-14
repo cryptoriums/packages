@@ -38,7 +38,9 @@ import (
 // client.SubscribeFilterLogs(ctx, query, ch)
 func TestLogsWithRedundancy(t *testing.T) {
 	logger := logging.NewLogger()
-	logging.ApplyFilter("debug", logger)
+	logger, err := logging.ApplyFilter("debug", logger)
+	testutil.Ok(t, err)
+
 	ctx := context.Background()
 
 	abi, err := abi.JSON(strings.NewReader(simple.SimpleStorageABI))

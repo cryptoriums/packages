@@ -33,6 +33,14 @@ func NewEthClientWithFiltererRedundancy(logger log.Logger, clients []*ethclient.
 	}
 }
 
+func (self *EthClientWithFiltererRedundancy) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
+	return self.ContractFilterer.FilterLogs(ctx, query)
+}
+
+func (self *EthClientWithFiltererRedundancy) SubscribeFilterLogs(ctx context.Context, query ethereum.FilterQuery, chDst chan<- types.Log) (ethereum.Subscription, error) {
+	return self.ContractFilterer.SubscribeFilterLogs(ctx, query, chDst)
+}
+
 // NewLogFiltererWithRedundancy creates a ContractFilterer that can use multiple backends and it ensures that the same logs is never sent twice.
 func NewLogFiltererWithRedundancy(logger log.Logger, logFilterers []ethereum.LogFilterer) ethereum.LogFilterer {
 	return &LogFiltererWithRedundancy{
@@ -79,11 +87,11 @@ func (self *LogFiltererWithRedundancy) FilterLogs(ctx context.Context, query eth
 
 	var logsDeduped []types.Log
 	for i, log := range biggestArray {
-		if isCached(cacheStore, log) {
+		if isCached(self.logger, cacheStore, log) {
 			continue
 		}
 		logsDeduped = append(logsDeduped, log)
-		err := cache(cacheStore, log)
+		err := cache(self.logger, cacheStore, log)
 		if err != nil {
 			level.Error(self.logger).Log("msg", "caching log entry", "err", err)
 		}
@@ -92,11 +100,11 @@ func (self *LogFiltererWithRedundancy) FilterLogs(ctx context.Context, query eth
 			if len(logs) < i+1 {
 				continue
 			}
-			if isCached(cacheStore, logs[i]) {
+			if isCached(self.logger, cacheStore, logs[i]) {
 				continue
 			}
 			logsDeduped = append(logsDeduped, logs[i])
-			err := cache(cacheStore, logs[i])
+			err := cache(self.logger, cacheStore, logs[i])
 			if err != nil {
 				level.Error(self.logger).Log("msg", "setting cache", "err", err)
 			}
@@ -105,15 +113,20 @@ func (self *LogFiltererWithRedundancy) FilterLogs(ctx context.Context, query eth
 	return logsDeduped, nil
 }
 
-func isCached(cache gcache.Cache, log types.Log) bool {
+func isCached(logger log.Logger, cache gcache.Cache, log types.Log) bool {
 	hash := HashFromLogAllFields(log)
 	_, err := cache.Get(hash)
 
-	return err != gcache.KeyNotFoundError
+	if err != gcache.KeyNotFoundError {
+		level.Debug(logger).Log("msg", "log is cached", "hash", hash, "err", err)
+		return true
+	}
+	return false
 }
 
-func cache(cache gcache.Cache, log types.Log) error {
+func cache(logger log.Logger, cache gcache.Cache, log types.Log) error {
 	hash := HashFromLogAllFields(log)
+	level.Debug(logger).Log("msg", "caching log", "hash", hash)
 	return cache.Set(hash, true)
 }
 
@@ -161,14 +174,15 @@ func NewMultiSubscription(
 		for {
 			select {
 			case log := <-chSrc:
-				if isCached(cacheStore, log) {
+				if isCached(logger, cacheStore, log) {
 					continue
 				}
 				select {
 				case <-sub.ctx.Done():
 					return
 				case chDst <- log:
-					err := cache(cacheStore, log)
+					level.Debug(logger).Log("msg", "event sent", "log", log.TxHash)
+					err := cache(logger, cacheStore, log)
 					if err != nil {
 						level.Error(logger).Log("msg", "setting cache", "err", err)
 					}
