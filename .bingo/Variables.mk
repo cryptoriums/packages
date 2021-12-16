@@ -23,11 +23,11 @@ $(CONTRAGET): $(BINGO_DIR)/contraget.mod
 	@echo "(re)installing $(GOBIN)/contraget-v0.0.0-20211204194358-1f5bb7f231b2"
 	@cd $(BINGO_DIR) && $(GO) build -mod=mod -modfile=contraget.mod -o=$(GOBIN)/contraget-v0.0.0-20211204194358-1f5bb7f231b2 "github.com/cryptoriums/contraget/cmd/contraget"
 
-FAILLINT := $(GOBIN)/faillint-v1.7.0
+FAILLINT := $(GOBIN)/faillint-v1.8.0
 $(FAILLINT): $(BINGO_DIR)/faillint.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/faillint-v1.7.0"
-	@cd $(BINGO_DIR) && $(GO) build -mod=mod -modfile=faillint.mod -o=$(GOBIN)/faillint-v1.7.0 "github.com/fatih/faillint"
+	@echo "(re)installing $(GOBIN)/faillint-v1.8.0"
+	@cd $(BINGO_DIR) && $(GO) build -mod=mod -modfile=faillint.mod -o=$(GOBIN)/faillint-v1.8.0 "github.com/fatih/faillint"
 
 GOIMPORTS := $(GOBIN)/goimports-v0.0.0-20200925163029-4c77dbd9e533
 $(GOIMPORTS): $(BINGO_DIR)/goimports.mod
