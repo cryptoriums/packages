@@ -248,9 +248,9 @@ func NewSignedTX(
 	ctx context.Context,
 	prvKey *ecdsa.PrivateKey,
 	to common.Address,
-	client EthClient,
 	abis string,
-	overwritePending bool,
+	nonce uint64,
+	netID int64,
 	methodName string,
 	args []interface{},
 	gasLimit uint64,
@@ -258,21 +258,6 @@ func NewSignedTX(
 	gasTip float64,
 	value float64,
 ) (*types.Transaction, string, error) {
-
-	netID := client.NetworkID()
-	var nonce uint64
-	var err error
-	if overwritePending {
-		nonce, err = client.NonceAt(ctx, crypto.PubkeyToAddress(prvKey.PublicKey), nil)
-		if err != nil {
-			return nil, "", errors.Wrap(err, "getting last nonce")
-		}
-	} else {
-		nonce, err = client.PendingNonceAt(ctx, crypto.PubkeyToAddress(prvKey.PublicKey))
-		if err != nil {
-			return nil, "", errors.Wrap(err, "getting pending nonce")
-		}
-	}
 
 	abiP, err := abi.JSON(strings.NewReader(abis))
 	if err != nil {
@@ -379,5 +364,5 @@ func GetEtherscanURL(netID int64) string {
 	case 5:
 		prefix = "goerli."
 	}
-	return "https://" + prefix + "etherscan.io/"
+	return "https://" + prefix + "etherscan.io"
 }
