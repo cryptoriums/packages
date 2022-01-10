@@ -170,7 +170,7 @@ func NewMultiSubscription(
 		errSrc: errSrc,
 	}
 
-	go func(chSrc chan types.Log) {
+	go func(chSrc chan types.Log, chDst chan<- types.Log) {
 		for {
 			select {
 			case log := <-chSrc:
@@ -191,15 +191,17 @@ func NewMultiSubscription(
 				return
 			}
 		}
-	}(chSrc)
+	}(chSrc, chDst)
 
 	for _, err := range errSrc {
 		go func(err <-chan error) {
 			select {
 			case <-ctx.Done():
+				sub.Unsubscribe()
 				return
 			case errI := <-err:
 				sub.errDst <- errI
+				sub.Unsubscribe()
 			}
 		}(err)
 	}
