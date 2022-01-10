@@ -32,7 +32,6 @@ func ApplyFilter(configLevel string, logger log.Logger) (log.Logger, error) {
 		lvl = level.AllowError()
 	case "warn":
 		lvl = level.AllowWarn()
-
 	case "debug":
 		lvl = level.AllowDebug()
 	default:

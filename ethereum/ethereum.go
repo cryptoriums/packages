@@ -4,10 +4,12 @@
 package ethereum
 
 import (
+	"bufio"
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
 	"math/big"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -365,4 +367,19 @@ func GetEtherscanURL(netID int64) string {
 		prefix = "goerli."
 	}
 	return "https://" + prefix + "etherscan.io"
+}
+
+func CompilerVersion(fileName string) (string, error) {
+	f, err := os.Open(fileName)
+	if err != nil {
+		return "", errors.Wrap(err, "opening the solidity file")
+	}
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "pragma solidity") {
+			return "v" + line[len(line)-6:len(line)-1], nil
+		}
+	}
+	return "", errors.New("file doesn't contain solidity version")
 }
