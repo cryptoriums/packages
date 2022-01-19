@@ -5,6 +5,7 @@ package events
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"math/big"
 	"sync"
@@ -34,12 +35,6 @@ type Config struct {
 	LogLevel string
 }
 
-type Contract interface {
-	Abi() abi.ABI
-	WatchLogs(opts *bind.WatchOpts, name string, query ...[]interface{}) (chan types.Log, event.Subscription, error)
-	Addr() common.Address
-}
-
 type TrackerEvents struct {
 	logger       log.Logger
 	ctx          context.Context
@@ -47,9 +42,11 @@ type TrackerEvents struct {
 	client       ethereum_t.EthClient
 	mtx          sync.Mutex
 	cacheSentTXs gcache.Cache
-	contract     Contract
+	addr         common.Address
+	fromBlock    int64
+	toBlock      *big.Int
 	lookBack     time.Duration
-	eventName    string
+	eventQuery   [][]interface{}
 	dstChan      chan types.Log
 
 	reorgWaitPeriod  time.Duration
@@ -61,15 +58,26 @@ func New(
 	logger log.Logger,
 	cfg Config,
 	client ethereum_t.EthClient,
-	contract Contract,
+	addr common.Address,
+	fromBlock int64,
+	toBlock int64,
 	lookBack time.Duration,
-	eventName string,
+	eventQuery [][]interface{},
 	reorgWaitPeriod time.Duration,
 ) (*TrackerEvents, chan types.Log, error) {
 	logger, err := logging.ApplyFilter(cfg.LogLevel, logger)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "apply filter logger")
 	}
+	if fromBlock != 0 && lookBack != 0 {
+		return nil, nil, errors.New("only one needs to be set either fromBlock or lookBack")
+	}
+
+	var _toBlock *big.Int
+	if toBlock != 0 {
+		_toBlock = big.NewInt(toBlock)
+	}
+
 	logger = log.With(logger, "component", ComponentName)
 	ctx, stop := context.WithCancel(ctx)
 
@@ -79,9 +87,11 @@ func New(
 		ctx:              ctx,
 		stop:             stop,
 		logger:           logger,
-		contract:         contract,
+		addr:             addr,
+		fromBlock:        fromBlock,
+		toBlock:          _toBlock,
 		lookBack:         lookBack,
-		eventName:        eventName,
+		eventQuery:       eventQuery,
 		dstChan:          dstChan,
 		reorgWaitPeriod:  reorgWaitPeriod,
 		reorgWaitPending: make(map[string]context.CancelFunc),
@@ -91,26 +101,38 @@ func New(
 }
 func (self *TrackerEvents) Start() error {
 	level.Info(self.logger).Log("msg", "starting",
-		"monitorAddr", self.contract.Addr(),
-		"lookBack", self.lookBack,
-		"eventName", self.eventName,
+		"monitorAddr", self.addr,
+		"fromBlock", self.fromBlock,
+		"toBlock", self.toBlock,
+		"eventQuery", fmt.Sprintf("%+v", self.eventQuery),
 		"reorgWaitPeriod", self.reorgWaitPeriod,
 	)
-	if self.lookBack != 0 {
-		ctx, cncl := context.WithTimeout(self.ctx, time.Minute)
-		defer cncl()
-		blockNums := ethereum_t.BlocksPerMinute * self.lookBack.Minutes()
+	if self.fromBlock != 0 || self.lookBack != 0 {
+		fromBlock := self.fromBlock
+		if self.lookBack != 0 {
+			ctx, cncl := context.WithTimeout(self.ctx, time.Minute)
+			defer cncl()
+			blockNums := ethereum_t.BlocksPerMinute * self.lookBack.Minutes()
 
-		headerNow, err := self.client.HeaderByNumber(ctx, nil)
-		if err != nil {
-			return errors.Wrap(err, "get latest eth block header")
+			headerNow, err := self.client.HeaderByNumber(ctx, nil)
+			if err != nil {
+				return errors.Wrap(err, "get latest eth block header")
+			}
+			fromBlock = headerNow.Number.Int64() - int64(blockNums)
 		}
-		fromBlock := headerNow.Number.Int64() - int64(blockNums)
+
+		topics, err := abi.MakeTopics(self.eventQuery...)
+		if err != nil {
+			return errors.Wrap(err, "making filter topics")
+		}
+
+		fmt.Printf("%+v \n", topics)
+
 		query := ethereum.FilterQuery{
 			FromBlock: big.NewInt(fromBlock),
-			ToBlock:   nil,
-			Addresses: []common.Address{self.contract.Addr()},
-			Topics:    [][]common.Hash{{self.contract.Abi().Events[self.eventName].ID}},
+			ToBlock:   self.toBlock,
+			Addresses: []common.Address{self.addr},
+			Topics:    topics,
 		}
 
 		logs, err := self.client.FilterLogs(self.ctx, query)
@@ -128,7 +150,10 @@ func (self *TrackerEvents) Start() error {
 	}
 
 	// Initial subscription.
-	src, subs := self.waitSubscribe()
+	src, subs, err := self.waitSubscribe()
+	if err != nil {
+		return errors.Wrap(err, "creating subs, this should never happen")
+	}
 	defer func() {
 		if subs != nil {
 			subs.Unsubscribe()
@@ -145,8 +170,11 @@ func (self *TrackerEvents) Start() error {
 			return nil
 		case err := <-subs.Err():
 			level.Error(self.logger).Log("msg", "subscription failed will try to resubscribe", "err", err)
-			src, subs = self.waitSubscribe()
+			src, subs, err = self.waitSubscribe()
 			cncl()
+			if err != nil {
+				return errors.Wrap(err, "creating subs, this should never happen")
+			}
 			ctx, cncl = context.WithCancel(self.ctx)
 			go self.listen(ctx, src)
 		}
@@ -211,7 +239,7 @@ func (self *TrackerEvents) Stop() {
 	self.stop()
 }
 
-func (self *TrackerEvents) waitSubscribe() (chan types.Log, event.Subscription) {
+func (self *TrackerEvents) waitSubscribe() (chan types.Log, event.Subscription, error) {
 	ticker := time.NewTicker(1)
 	defer ticker.Stop()
 	var resetTicker sync.Once
@@ -219,7 +247,7 @@ func (self *TrackerEvents) waitSubscribe() (chan types.Log, event.Subscription) 
 	for {
 		select {
 		case <-self.ctx.Done():
-			return nil, &NoopSubs{} // To avoid panics in the caller.
+			return nil, &NoopSubs{}, nil // To avoid panics in the caller.
 		case <-ticker.C:
 			resetTicker.Do(func() { ticker.Reset(defaultDelay) })
 		}
@@ -227,13 +255,29 @@ func (self *TrackerEvents) waitSubscribe() (chan types.Log, event.Subscription) 
 		opts := &bind.WatchOpts{
 			Context: self.ctx,
 		}
-		src, subs, err := self.contract.WatchLogs(opts, self.eventName)
+
+		topics, err := abi.MakeTopics(self.eventQuery...)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		src := make(chan types.Log)
+
+		config := ethereum.FilterQuery{
+			Addresses: []common.Address{self.addr},
+			Topics:    topics,
+		}
+		if opts.Start != nil {
+			config.FromBlock = new(big.Int).SetUint64(*opts.Start)
+		}
+		subs, err := self.client.SubscribeFilterLogs(self.ctx, config, src)
 		if err != nil {
 			level.Error(self.logger).Log("msg", "subscription to events failed", "err", err)
 			continue
 		}
-		level.Info(self.logger).Log("msg", "subscription created", "eventName", self.eventName)
-		return src, subs
+
+		level.Info(self.logger).Log("msg", "subscription created", "eventQuery", fmt.Sprintf("%+v", self.eventQuery))
+		return src, subs, nil
 	}
 }
 
