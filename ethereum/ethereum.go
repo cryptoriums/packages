@@ -382,7 +382,7 @@ func CompilerVersion(fileName string) (string, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.Contains(line, "pragma solidity") {
-			return "v" + line[len(line)-6:len(line)-1], nil
+			return "v" + line[len(line)-7:len(line)-1], nil
 		}
 	}
 	return "", errors.New("file doesn't contain solidity version")
