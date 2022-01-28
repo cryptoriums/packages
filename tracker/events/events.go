@@ -72,6 +72,13 @@ func New(
 	var _fromBlock *big.Int
 	if fromBlock != 0 {
 		_fromBlock = big.NewInt(int64(fromBlock))
+	} else {
+		headerNow, err := client.HeaderByNumber(ctx, nil)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "get latest eth block header")
+		}
+		_fromBlock = headerNow.Number
+
 	}
 
 	if lookBack != 0 {
