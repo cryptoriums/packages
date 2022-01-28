@@ -87,11 +87,11 @@ func (self *LogFiltererWithRedundancy) FilterLogs(ctx context.Context, query eth
 
 	var logsDeduped []types.Log
 	for i, log := range biggestArray {
-		if isCached(self.logger, cacheStore, log) {
+		if IsCached(self.logger, cacheStore, log) {
 			continue
 		}
 		logsDeduped = append(logsDeduped, log)
-		err := cache(self.logger, cacheStore, log)
+		err := Cache(self.logger, cacheStore, log)
 		if err != nil {
 			level.Error(self.logger).Log("msg", "caching log entry", "err", err)
 		}
@@ -100,20 +100,20 @@ func (self *LogFiltererWithRedundancy) FilterLogs(ctx context.Context, query eth
 			if len(logs) < i+1 {
 				continue
 			}
-			if isCached(self.logger, cacheStore, logs[i]) {
+			if IsCached(self.logger, cacheStore, logs[i]) {
 				continue
 			}
 			logsDeduped = append(logsDeduped, logs[i])
-			err := cache(self.logger, cacheStore, logs[i])
+			err := Cache(self.logger, cacheStore, logs[i])
 			if err != nil {
-				level.Error(self.logger).Log("msg", "setting cache", "err", err)
+				level.Error(self.logger).Log("msg", "setting Cache", "err", err)
 			}
 		}
 	}
 	return logsDeduped, nil
 }
 
-func isCached(logger log.Logger, cache gcache.Cache, log types.Log) bool {
+func IsCached(logger log.Logger, cache gcache.Cache, log types.Log) bool {
 	hash := HashFromLogAllFields(log)
 	_, err := cache.Get(hash)
 
@@ -124,7 +124,7 @@ func isCached(logger log.Logger, cache gcache.Cache, log types.Log) bool {
 	return false
 }
 
-func cache(logger log.Logger, cache gcache.Cache, log types.Log) error {
+func Cache(logger log.Logger, cache gcache.Cache, log types.Log) error {
 	hash := HashFromLogAllFields(log)
 	level.Debug(logger).Log("msg", "caching log", "hash", hash)
 	return cache.Set(hash, true)
@@ -174,7 +174,7 @@ func NewMultiSubscription(
 		for {
 			select {
 			case log := <-chSrc:
-				if isCached(logger, cacheStore, log) {
+				if IsCached(logger, cacheStore, log) {
 					continue
 				}
 				select {
@@ -182,7 +182,7 @@ func NewMultiSubscription(
 					return
 				case chDst <- log:
 					level.Debug(logger).Log("msg", "event sent", "log", log.TxHash)
-					err := cache(logger, cacheStore, log)
+					err := Cache(logger, cacheStore, log)
 					if err != nil {
 						level.Error(logger).Log("msg", "setting cache", "err", err)
 					}
@@ -228,7 +228,7 @@ func (self *MultiSubscription) Err() <-chan error {
 	return self.errDst
 }
 
-func HashFromLog(log types.Log) string {
+func hashFromLog(log types.Log) string {
 	// Using the topics data will cause a race when more than one TX include a log with the same topics, but it is highly unlikely.
 	topicStr := ""
 	for _, topic := range log.Topics {
@@ -238,6 +238,6 @@ func HashFromLog(log types.Log) string {
 }
 
 func HashFromLogAllFields(log types.Log) string {
-	hash := HashFromLog(log)
+	hash := hashFromLog(log)
 	return hash + "-blockHash:" + log.BlockHash.Hex() + "-txIndex:" + log.TxHash.Hex() + "-removed:" + strconv.FormatBool(log.Removed)
 }

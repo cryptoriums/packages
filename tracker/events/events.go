@@ -17,7 +17,6 @@ import (
 	"github.com/cryptoriums/packages/logging"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
@@ -42,10 +41,8 @@ type TrackerEvents struct {
 	client       ethereum_t.EthClient
 	mtx          sync.Mutex
 	cacheSentTXs gcache.Cache
-	addr         common.Address
-	fromBlock    int64
-	toBlock      *big.Int
-	lookBack     time.Duration
+	addrs        []common.Address
+	fromBlock    *big.Int
 	eventQuery   [][]interface{}
 	dstChan      chan types.Log
 
@@ -58,9 +55,8 @@ func New(
 	logger log.Logger,
 	cfg Config,
 	client ethereum_t.EthClient,
-	addr common.Address,
-	fromBlock int64,
-	toBlock int64,
+	addrs []common.Address,
+	fromBlock uint64,
 	lookBack time.Duration,
 	eventQuery [][]interface{},
 	reorgWaitPeriod time.Duration,
@@ -73,9 +69,21 @@ func New(
 		return nil, nil, errors.New("only one needs to be set either fromBlock or lookBack")
 	}
 
-	var _toBlock *big.Int
-	if toBlock != 0 {
-		_toBlock = big.NewInt(toBlock)
+	var _fromBlock *big.Int
+	if fromBlock != 0 {
+		_fromBlock = big.NewInt(int64(fromBlock))
+	}
+
+	if lookBack != 0 {
+		ctx, cncl := context.WithTimeout(ctx, time.Minute)
+		defer cncl()
+		blockNums := ethereum_t.BlocksPerMinute * lookBack.Minutes()
+
+		headerNow, err := client.HeaderByNumber(ctx, nil)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "get latest eth block header")
+		}
+		_fromBlock = big.NewInt(headerNow.Number.Int64() - int64(blockNums))
 	}
 
 	logger = log.With(logger, "component", ComponentName)
@@ -87,69 +95,29 @@ func New(
 		ctx:              ctx,
 		stop:             stop,
 		logger:           logger,
-		addr:             addr,
-		fromBlock:        fromBlock,
-		toBlock:          _toBlock,
-		lookBack:         lookBack,
+		addrs:            addrs,
+		fromBlock:        _fromBlock,
 		eventQuery:       eventQuery,
 		dstChan:          dstChan,
 		reorgWaitPeriod:  reorgWaitPeriod,
 		reorgWaitPending: make(map[string]context.CancelFunc),
-		// To be on the safe side create the cache 2 times bigger then the expected block count during the reorg wait.
-		cacheSentTXs: gcache.New(int(math.Max(50, 2*ethereum_t.BlocksPerSecond*reorgWaitPeriod.Seconds()))).LRU().Build(),
+		// To be on the safe side create the cache few times bigger then the expected block count during the reorg wait.
+		cacheSentTXs: gcache.New(int(math.Max(50, 100*ethereum_t.BlocksPerSecond*reorgWaitPeriod.Seconds()))).LRU().Build(),
 	}, dstChan, nil
 }
 func (self *TrackerEvents) Start() error {
 	level.Info(self.logger).Log("msg", "starting",
-		"monitorAddr", self.addr,
+		"monitorAddrs", fmt.Sprintf("%+v", self.addrs),
 		"fromBlock", self.fromBlock,
-		"toBlock", self.toBlock,
 		"eventQuery", fmt.Sprintf("%+v", self.eventQuery),
 		"reorgWaitPeriod", self.reorgWaitPeriod,
 	)
-	if self.fromBlock != 0 || self.lookBack != 0 {
-		fromBlock := self.fromBlock
-		if self.lookBack != 0 {
-			ctx, cncl := context.WithTimeout(self.ctx, time.Minute)
-			defer cncl()
-			blockNums := ethereum_t.BlocksPerMinute * self.lookBack.Minutes()
 
-			headerNow, err := self.client.HeaderByNumber(ctx, nil)
-			if err != nil {
-				return errors.Wrap(err, "get latest eth block header")
-			}
-			fromBlock = headerNow.Number.Int64() - int64(blockNums)
-		}
-
-		topics, err := abi.MakeTopics(self.eventQuery...)
-		if err != nil {
-			return errors.Wrap(err, "making filter topics")
-		}
-
-		fmt.Printf("%+v \n", topics)
-
-		query := ethereum.FilterQuery{
-			FromBlock: big.NewInt(fromBlock),
-			ToBlock:   self.toBlock,
-			Addresses: []common.Address{self.addr},
-			Topics:    topics,
-		}
-
-		logs, err := self.client.FilterLogs(self.ctx, query)
-		if err != nil {
-			return errors.Wrap(err, "getting historical logs")
-		}
-		for _, log := range logs {
-			select {
-			case self.dstChan <- log:
-			case <-self.ctx.Done():
-				return nil
-			}
-		}
-
+	err := self.sendHistoricalLogs()
+	if err != nil {
+		return errors.Wrap(err, "sending historical logs")
 	}
 
-	// Initial subscription.
 	src, subs, err := self.waitSubscribe()
 	if err != nil {
 		return errors.Wrap(err, "creating subs, this should never happen")
@@ -170,6 +138,12 @@ func (self *TrackerEvents) Start() error {
 			return nil
 		case err := <-subs.Err():
 			level.Error(self.logger).Log("msg", "subscription failed will try to resubscribe", "err", err)
+
+			err = self.sendHistoricalLogs()
+			if err != nil {
+				level.Error(self.logger).Log("msg", "sending historical logs")
+			}
+
 			src, subs, err = self.waitSubscribe()
 			cncl()
 			if err != nil {
@@ -181,6 +155,35 @@ func (self *TrackerEvents) Start() error {
 	}
 }
 
+func (self *TrackerEvents) sendHistoricalLogs() error {
+	q, err := self.createFilterQuery()
+	if err != nil {
+		return errors.Wrap(err, "creating filter query")
+	}
+
+	logs, err := self.client.FilterLogs(self.ctx, *q)
+	if err != nil {
+		return errors.Wrap(err, "getting historical logs")
+	}
+	for _, log := range logs {
+		if events.IsCached(self.logger, self.cacheSentTXs, log) {
+			level.Info(self.logger).Log("msg", "skipping event that has already been sent", "id", events.HashFromLogAllFields(log))
+			continue
+		}
+
+		if err := events.Cache(self.logger, self.cacheSentTXs, log); err != nil {
+			level.Error(self.logger).Log("msg", "adding tx event cache", "err", err)
+		}
+
+		select {
+		case self.dstChan <- log:
+		case <-self.ctx.Done():
+			return nil
+		}
+	}
+	return nil
+}
+
 func (self *TrackerEvents) listen(ctx context.Context, src chan types.Log) {
 	level.Info(self.logger).Log("msg", "starting new subs listener")
 
@@ -190,7 +193,7 @@ func (self *TrackerEvents) listen(ctx context.Context, src chan types.Log) {
 			level.Info(self.logger).Log("msg", "subscription listener canceled")
 			return
 		case event := <-src:
-			hash := events.HashFromLog(event)
+			hash := events.HashFromLogAllFields(event)
 			level.Debug(self.logger).Log("msg", "new event received", "hash", hash)
 
 			if event.Removed {
@@ -208,12 +211,12 @@ func (self *TrackerEvents) listen(ctx context.Context, src chan types.Log) {
 				select {
 				case <-waitReorg.C:
 					// With short reorg wait it is possible to try and send the same TX twice so this check mitigates that.
-					_, err := self.cacheSentTXs.Get(hash)
-					if err != gcache.KeyNotFoundError {
+
+					if events.IsCached(self.logger, self.cacheSentTXs, event) {
 						level.Info(self.logger).Log("msg", "skipping event that has already been sent", "id", hash)
 						return
 					}
-					if err := self.cacheSentTXs.Set(hash, true); err != nil {
+					if err := events.Cache(self.logger, self.cacheSentTXs, event); err != nil {
 						level.Error(self.logger).Log("msg", "adding tx event cache", "err", err)
 					}
 
@@ -221,6 +224,10 @@ func (self *TrackerEvents) listen(ctx context.Context, src chan types.Log) {
 					level.Debug(self.logger).Log("msg", "sending event", "hash", hash)
 					select {
 					case self.dstChan <- event:
+						// In case of a subs error this is used to pick up from the last block that was logged.
+						self.mtx.Lock()
+						self.fromBlock = big.NewInt(int64(event.BlockNumber))
+						self.mtx.Unlock()
 						return
 					case <-self.ctx.Done():
 						return
@@ -252,33 +259,39 @@ func (self *TrackerEvents) waitSubscribe() (chan types.Log, event.Subscription, 
 			resetTicker.Do(func() { ticker.Reset(defaultDelay) })
 		}
 
-		opts := &bind.WatchOpts{
-			Context: self.ctx,
-		}
-
-		topics, err := abi.MakeTopics(self.eventQuery...)
+		q, err := self.createFilterQuery()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrap(err, "creating filter query")
 		}
 
 		src := make(chan types.Log)
 
-		config := ethereum.FilterQuery{
-			Addresses: []common.Address{self.addr},
-			Topics:    topics,
-		}
-		if opts.Start != nil {
-			config.FromBlock = new(big.Int).SetUint64(*opts.Start)
-		}
-		subs, err := self.client.SubscribeFilterLogs(self.ctx, config, src)
+		subs, err := self.client.SubscribeFilterLogs(self.ctx, *q, src)
 		if err != nil {
 			level.Error(self.logger).Log("msg", "subscription to events failed", "err", err)
 			continue
 		}
 
-		level.Info(self.logger).Log("msg", "subscription created", "eventQuery", fmt.Sprintf("%+v", self.eventQuery))
+		level.Info(self.logger).Log("msg", "subscription created")
 		return src, subs, nil
 	}
+}
+
+func (self *TrackerEvents) createFilterQuery() (*ethereum.FilterQuery, error) {
+	topics, err := abi.MakeTopics(self.eventQuery...)
+	if err != nil {
+		return nil, err
+	}
+	self.mtx.Lock()
+	q := &ethereum.FilterQuery{
+		Addresses: self.addrs,
+		Topics:    topics,
+		FromBlock: self.fromBlock,
+	}
+	self.mtx.Unlock()
+
+	level.Debug(self.logger).Log("msg", "query created", "params", fmt.Sprintf("%+v", q))
+	return q, nil
 }
 
 func (self *TrackerEvents) addPending(hash string, cncl context.CancelFunc) {
