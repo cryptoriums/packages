@@ -19,10 +19,9 @@ func ReplaceContract(ctx context.Context, nodeURL string, contractPath string, c
 	}
 
 	cfg := &contraget.Cli{
-		Path:        contractPath,
-		Name:        "contract",
-		DownloadDst: "tmp",
-		ObjectsDst:  "tmp",
+		Path:       contractPath,
+		Name:       "contract",
+		ObjectsDst: "tmp",
 	}
 	defer os.RemoveAll(cfg.DownloadDst)
 

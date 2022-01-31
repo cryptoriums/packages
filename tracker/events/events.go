@@ -78,7 +78,6 @@ func New(
 			return nil, nil, errors.Wrap(err, "get latest eth block header")
 		}
 		_fromBlock = headerNow.Number
-
 	}
 
 	if lookBack != 0 {

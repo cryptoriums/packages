@@ -55,6 +55,8 @@ const (
 	ReorgEventWaitSafe = time.Minute
 	ReorgEventWaitSlow = 3 * time.Minute
 	ReorgEventWaitFast = 30 * time.Second
+
+	HardhatNetID = 31337
 )
 
 var ethAddressRE *regexp.Regexp = regexp.MustCompile("^0x[0-9a-fA-F]{40}$")
@@ -155,22 +157,35 @@ func GetAccounts(logger log.Logger, envVars map[string]string) ([]*Account, erro
 	// Create an Account instance per private keys.
 	accounts := make([]*Account, len(privateKeys))
 	for i, pkey := range privateKeys {
-		privateKey, err := crypto.HexToECDSA(strings.TrimSpace(pkey))
+
+		account, err := AccountFromPrvKey(pkey)
 		if err != nil {
-			return nil, errors.Wrap(err, "getting private key to ECDSA")
+			return nil, errors.Wrap(err, "creating an account from private key")
 		}
 
-		publicKey := privateKey.Public()
-		publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-		if !ok {
-			return nil, errors.New("casting public key to ECDSA")
-		}
-
-		publicAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-		accounts[i] = &Account{Address: publicAddress, PrivateKey: privateKey}
-		level.Info(logger).Log("msg", "registered account", "addr", publicAddress.Hex())
+		accounts[i] = account
+		level.Info(logger).Log("msg", "registered account", "addr", account.GetAddress().Hex())
 	}
 	return accounts, nil
+}
+
+func AccountFromPrvKey(pkey string) (*Account, error) {
+	if strings.HasPrefix(pkey, "0x") {
+		pkey = strings.TrimPrefix(pkey, "0x")
+	}
+	privateKey, err := crypto.HexToECDSA(strings.TrimSpace(pkey))
+	if err != nil {
+		return nil, errors.Wrap(err, "getting private key to ECDSA")
+	}
+
+	publicKey := privateKey.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return nil, errors.New("casting public key to ECDSA")
+	}
+
+	publicAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+	return &Account{Address: publicAddress, PrivateKey: privateKey}, nil
 }
 
 func NewClient(ctx context.Context, logger log.Logger, envVars map[string]string) (EthClient, error) {
@@ -234,6 +249,19 @@ func NewClients(ctx context.Context, logger log.Logger, nodeURLs []string) ([]*e
 	}
 
 	return ethClients, rpcClients, lastNetID, nil
+}
+
+func NewClientCachedNetID(ctx context.Context, logger log.Logger, nodeURL string) (EthClient, error) {
+	ethClient, rpcClient, netID, err := NewClients(ctx, logger, []string{nodeURL})
+	if err != nil {
+		return nil, err
+	}
+
+	return &ClientCachedNetID{
+		Client:    ethClient[0],
+		netID:     netID,
+		rpcClient: rpcClient[0],
+	}, nil
 }
 
 type ClientCachedNetID struct {
@@ -321,6 +349,9 @@ func PrepareTxOpts(
 	}
 
 	if gasMaxFeeWei == nil {
+		if client.NetworkID() == HardhatNetID {
+			return nil, errors.New("gasMaxFee is required for the hardhat network as it doesn't support the eth_maxPriorityFeePerGas method for getting the current max fee")
+		}
 		gasMaxTip, err := client.SuggestGasTipCap(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting suggested gas tip")
