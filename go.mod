@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/bluele/gcache v0.0.2
-	github.com/cryptoriums/contraget v0.0.0-20220124111431-3d39123af741
+	github.com/cryptoriums/contraget v0.0.0-20220201000300-9a7e93ffba66
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ethereum/go-ethereum v1.10.15
 	github.com/go-kit/log v0.2.0

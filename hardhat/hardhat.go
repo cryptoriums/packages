@@ -2,7 +2,6 @@ package hardhat
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"os"
 	"path"
@@ -87,8 +86,6 @@ func SetBalance(ctx context.Context, nodeURL string, of common.Address, amnt *bi
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
-
-	fmt.Println("hexutil.EncodeBig(amnt)", hexutil.EncodeBig(amnt))
 
 	err = rpcClient.CallContext(ctx, nil, "hardhat_setBalance", of, hexutil.EncodeBig(amnt))
 	if err != nil {

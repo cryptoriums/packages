@@ -216,30 +216,30 @@ func (self *TrackerEvents) listen(ctx context.Context, src chan types.Log) {
 
 				select {
 				case <-waitReorg.C:
-					// With short reorg wait it is possible to try and send the same TX twice so this check mitigates that.
-
-					if events.IsCached(self.logger, self.cacheSentTXs, event) {
-						level.Info(self.logger).Log("msg", "skipping event that has already been sent", "id", hash)
-						return
-					}
-					if err := events.Cache(self.logger, self.cacheSentTXs, event); err != nil {
-						level.Error(self.logger).Log("msg", "adding tx event cache", "err", err)
-					}
-
-					self.cancelPending(hash) // Cleanup the ctx.
-					level.Debug(self.logger).Log("msg", "sending event", "hash", hash)
-					select {
-					case self.dstChan <- event:
-						// In case of a subs error this is used to pick up from the last block that was logged.
-						self.mtx.Lock()
-						self.fromBlock = big.NewInt(int64(event.BlockNumber))
-						self.mtx.Unlock()
-						return
-					case <-self.ctx.Done():
-						return
-					}
 				case <-ctxReorg.Done():
 					level.Debug(self.logger).Log("msg", "canceled due to reorg", "hash", hash)
+					return
+				}
+				// With short reorg wait it is possible to try and send the same TX twice so this check mitigates that.
+
+				if events.IsCached(self.logger, self.cacheSentTXs, event) {
+					level.Info(self.logger).Log("msg", "skipping event that has already been sent", "id", hash)
+					return
+				}
+				if err := events.Cache(self.logger, self.cacheSentTXs, event); err != nil {
+					level.Error(self.logger).Log("msg", "adding tx event cache", "err", err)
+				}
+
+				self.cancelPending(hash) // Cleanup the ctx.
+				level.Debug(self.logger).Log("msg", "sending event", "hash", hash)
+				select {
+				case self.dstChan <- event:
+					// In case of a subs error this is used to pick up from the last block that was logged.
+					self.mtx.Lock()
+					self.fromBlock = big.NewInt(int64(event.BlockNumber))
+					self.mtx.Unlock()
+					return
+				case <-self.ctx.Done():
 					return
 				}
 

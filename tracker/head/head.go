@@ -36,12 +36,10 @@ type TrackerHead struct {
 	ctx         context.Context
 	stop        context.CancelFunc
 	client      ethereum.ChainReader
-	mtx         sync.Mutex
 	cacheHeadTX gcache.Cache
 	dstChan     chan *types.Block
 
-	reorgWaitPeriod  time.Duration
-	reorgWaitPending map[string]context.CancelFunc
+	reorgWaitPeriod time.Duration
 }
 
 func New(
@@ -59,13 +57,12 @@ func New(
 
 	dstChan := make(chan *types.Block)
 	return &TrackerHead{
-		client:           client,
-		ctx:              ctx,
-		stop:             stop,
-		logger:           logger,
-		dstChan:          dstChan,
-		reorgWaitPeriod:  reorgWaitPeriod,
-		reorgWaitPending: make(map[string]context.CancelFunc),
+		client:          client,
+		ctx:             ctx,
+		stop:            stop,
+		logger:          logger,
+		dstChan:         dstChan,
+		reorgWaitPeriod: reorgWaitPeriod,
 		// To be on the safe side create the cache few times bigger then the expected block count during the reorg wait.
 		cacheHeadTX: gcache.New(int(math.Max(50, 3*ethereum_t.BlocksPerSecond*reorgWaitPeriod.Seconds()))).LRU().Build(),
 	}, dstChan, nil
@@ -83,6 +80,8 @@ func (self *TrackerHead) Start() error {
 		}
 	}()
 
+	go self.listen(src)
+
 	for {
 		select {
 		case <-self.ctx.Done():
@@ -90,6 +89,23 @@ func (self *TrackerHead) Start() error {
 		case err := <-subs.Err():
 			level.Error(self.logger).Log("msg", "subscription failed will try to resubscribe", "err", err)
 			src, subs = self.waitSubscribe()
+
+			if err != nil {
+				return errors.Wrap(err, "creating subs, this should never happen")
+			}
+			self.listen(src)
+		}
+	}
+}
+
+func (self *TrackerHead) listen(src chan *types.Header) {
+	level.Info(self.logger).Log("msg", "starting new subs listener")
+
+	for {
+		select {
+		case <-self.ctx.Done():
+			level.Info(self.logger).Log("msg", "subscription listener canceled")
+			return
 		case event := <-src:
 			logger := log.With(self.logger, "block", event.Number.Int64())
 
@@ -98,12 +114,14 @@ func (self *TrackerHead) Start() error {
 				select {
 				case self.dstChan <- types.NewBlock(event, nil, nil, nil, nil):
 				case <-self.ctx.Done():
-					return nil
+					return
 				}
 				continue
 			}
 
-			go func(event *types.Header, logger log.Logger) {
+			// Doesn't need a cancelation ctx as
+			// the BlockByNumber query returns the same block for reorg events.
+			go func(event *types.Header) {
 				waitForReorg := time.NewTicker(self.reorgWaitPeriod)
 				defer waitForReorg.Stop()
 
@@ -112,9 +130,6 @@ func (self *TrackerHead) Start() error {
 				case <-self.ctx.Done():
 					return
 				}
-
-				self.mtx.Lock()
-				defer self.mtx.Unlock()
 
 				ctx, cncl := context.WithTimeout(self.ctx, 2*time.Minute)
 				defer cncl()
@@ -143,7 +158,7 @@ func (self *TrackerHead) Start() error {
 					return
 				}
 
-			}(event, logger)
+			}(event)
 		}
 	}
 }
