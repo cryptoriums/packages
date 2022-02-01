@@ -169,9 +169,7 @@ func GetAccounts(logger log.Logger, envVars map[string]string) ([]*Account, erro
 }
 
 func AccountFromPrvKey(pkey string) (*Account, error) {
-	if strings.HasPrefix(pkey, "0x") {
-		pkey = strings.TrimPrefix(pkey, "0x")
-	}
+	pkey = strings.TrimPrefix(pkey, "0x")
 	privateKey, err := crypto.HexToECDSA(strings.TrimSpace(pkey))
 	if err != nil {
 		return nil, errors.Wrap(err, "getting private key to ECDSA")
