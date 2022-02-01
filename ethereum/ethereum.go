@@ -157,7 +157,6 @@ func GetAccounts(logger log.Logger, envVars map[string]string) ([]*Account, erro
 	// Create an Account instance per private keys.
 	accounts := make([]*Account, len(privateKeys))
 	for i, pkey := range privateKeys {
-
 		account, err := AccountFromPrvKey(pkey)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating an account from private key")
@@ -402,6 +401,16 @@ func GetEtherscanURL(netID int64) string {
 		prefix = "goerli."
 	}
 	return "https://" + prefix + "etherscan.io"
+}
+
+type SendTransactionOpts struct {
+	From     common.Address `json:"from"`               // The address the transaction is send from.
+	To       common.Address `json:"to,omitempty"`       // (optional when creating new contract) The address the transaction is directed to.
+	Gas      string         `json:"gas,omitempty"`      //  (optional, default: 90000) Integer of the gas provided for the transaction execution. It will return unused gas.
+	GasPrice string         `json:"gasPrice,omitempty"` // (optional, default: To-Be-Determined) Integer of the gasPrice used for each paid gas.
+	Value    string         `json:"value,omitempty"`    // (optional) Integer of the value sent with this transaction,
+	Data     string         `json:"data"`               // The compiled code of a contract OR the hash of the invoked method signature and encoded parameters.
+	Nonce    string         `json:"nonce,omitempty"`    // (optional) Integer of a nonce. This allows to overwrite your own pending transactions that use the same nonce.
 }
 
 func CompilerVersion(fileName string) (string, error) {
