@@ -125,4 +125,19 @@ $(SHELLCHECK): $(BIN_DIR)
 	@echo "Downloading Shellcheck"
 	curl -sNL "https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.$(OS).$(ARCH).tar.xz" | tar --strip-components=1 -xJf - -C $(BIN_DIR)
 
+.PHONY: test-ci
+test-ci: build-prepare test
+
+.PHONY: lint-ci
+lint-ci: build-prepare lint
+
+.PHONY: build-prepare
+build-prepare:
+	sed -i 's/replace github.com\/cryptoriums\/contraget => ..\/contraget//g' go.mod
+	go mod tidy
+	git config --global user.email "8903888+krasi-georgiev@users.noreply.github.com"
+	git config --global user.name "Krasi Georgiev"
+	git add -A
+	git diff-index --quiet HEAD || git commit -m "go mod"
+
 
