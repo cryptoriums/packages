@@ -119,6 +119,7 @@ func (self *ClientWithRetry) CallContract(ctx context.Context, call ethereum.Cal
 		case <-ticker.C:
 			resetTickerOnce.Do(func() { ticker.Reset(time.Second) })
 		}
+
 		for i, ethClient := range self.ethClients {
 			ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
 			defer cncl()
@@ -137,15 +138,16 @@ func (self *ClientWithRetry) PendingNonceAt(ctx context.Context, account common.
 	var resetTickerOnce sync.Once
 	defer ticker.Stop()
 	for {
-		ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
-		defer cncl()
 		select {
 		case <-ctx.Done():
 			return 0, ctx.Err()
 		case <-ticker.C:
 			resetTickerOnce.Do(func() { ticker.Reset(time.Second) })
 		}
+
 		for i, ethClient := range self.ethClients {
+			ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
+			defer cncl()
 			result, err := ethClient.PendingNonceAt(ctxRetry, account)
 			if err != nil {
 				level.Error(self.logger).Log("msg", "PendingNonceAt", "node", self.nodes[i], "err", err)
@@ -161,15 +163,16 @@ func (self *ClientWithRetry) BlockByNumber(ctx context.Context, number *big.Int)
 	var resetTickerOnce sync.Once
 	defer ticker.Stop()
 	for {
-		ctxRetry, cncl := context.WithTimeout(ctx, 30*time.Second)
-		defer cncl()
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-ticker.C:
 			resetTickerOnce.Do(func() { ticker.Reset(time.Second) })
 		}
+
 		for i, ethClient := range self.ethClients {
+			ctxRetry, cncl := context.WithTimeout(ctx, 30*time.Second)
+			defer cncl()
 			result, err := ethClient.BlockByNumber(ctxRetry, number)
 			if err != nil {
 				level.Error(self.logger).Log("msg", "BlockByNumber", "node", self.nodes[i], "err", err)
@@ -185,8 +188,6 @@ func (self *ClientWithRetry) SuggestGasTipCap(ctx context.Context) (*big.Int, er
 	var resetTickerOnce sync.Once
 	defer ticker.Stop()
 	for {
-		ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
-		defer cncl()
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -195,6 +196,8 @@ func (self *ClientWithRetry) SuggestGasTipCap(ctx context.Context) (*big.Int, er
 		}
 
 		for i, ethClient := range self.ethClients {
+			ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
+			defer cncl()
 			result, err := ethClient.SuggestGasTipCap(ctxRetry)
 			if err != nil {
 				level.Error(self.logger).Log("msg", "SuggestGasTipCap", "node", self.nodes[i], "err", err)
@@ -210,8 +213,6 @@ func (self *ClientWithRetry) SuggestGasPrice(ctx context.Context) (*big.Int, err
 	var resetTickerOnce sync.Once
 	defer ticker.Stop()
 	for {
-		ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
-		defer cncl()
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -220,6 +221,8 @@ func (self *ClientWithRetry) SuggestGasPrice(ctx context.Context) (*big.Int, err
 		}
 
 		for i, ethClient := range self.ethClients {
+			ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
+			defer cncl()
 			result, err := ethClient.SuggestGasPrice(ctxRetry)
 			if err != nil {
 				level.Error(self.logger).Log("msg", "SuggestGasPrice", "node", self.nodes[i], "err", err)
@@ -235,8 +238,6 @@ func (self *ClientWithRetry) PendingCodeAt(ctx context.Context, account common.A
 	var resetTickerOnce sync.Once
 	defer ticker.Stop()
 	for {
-		ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
-		defer cncl()
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -245,6 +246,8 @@ func (self *ClientWithRetry) PendingCodeAt(ctx context.Context, account common.A
 		}
 
 		for i, ethClient := range self.ethClients {
+			ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
+			defer cncl()
 			result, err := ethClient.PendingCodeAt(ctxRetry, account)
 			if err != nil {
 				level.Error(self.logger).Log("msg", "PendingCodeAt", "node", self.nodes[i], "err", err)
@@ -260,8 +263,6 @@ func (self *ClientWithRetry) EstimateGas(ctx context.Context, call ethereum.Call
 	var resetTickerOnce sync.Once
 	defer ticker.Stop()
 	for {
-		ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
-		defer cncl()
 		select {
 		case <-ctx.Done():
 			return 0, ctx.Err()
@@ -270,6 +271,8 @@ func (self *ClientWithRetry) EstimateGas(ctx context.Context, call ethereum.Call
 		}
 
 		for i, ethClient := range self.ethClients {
+			ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
+			defer cncl()
 			result, err := ethClient.EstimateGas(ctxRetry, call)
 			if err != nil {
 				level.Error(self.logger).Log("msg", "EstimateGas", "node", self.nodes[i], "err", err)
@@ -285,8 +288,6 @@ func (self *ClientWithRetry) SendTransaction(ctx context.Context, tx *types.Tran
 	var resetTickerOnce sync.Once
 	defer ticker.Stop()
 	for {
-		ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
-		defer cncl()
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -295,6 +296,8 @@ func (self *ClientWithRetry) SendTransaction(ctx context.Context, tx *types.Tran
 		}
 
 		for i, ethClient := range self.ethClients {
+			ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
+			defer cncl()
 			err := ethClient.SendTransaction(ctxRetry, tx)
 			if err != nil {
 				level.Error(self.logger).Log("msg", "SendTransaction", "node", self.nodes[i], "err", err)
@@ -310,15 +313,16 @@ func (self *ClientWithRetry) BalanceAt(ctx context.Context, account common.Addre
 	var resetTickerOnce sync.Once
 	defer ticker.Stop()
 	for {
-		ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
-		defer cncl()
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-ticker.C:
 			resetTickerOnce.Do(func() { ticker.Reset(time.Second) })
 		}
+
 		for i, ethClient := range self.ethClients {
+			ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
+			defer cncl()
 			result, err := ethClient.BalanceAt(ctxRetry, account, blockNumber)
 			if err != nil {
 				level.Error(self.logger).Log("msg", "BalanceAt", "node", self.nodes[i], "err", err)
@@ -334,8 +338,6 @@ func (self *ClientWithRetry) HeaderByNumber(ctx context.Context, number *big.Int
 	var resetTickerOnce sync.Once
 	defer ticker.Stop()
 	for {
-		ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
-		defer cncl()
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -344,6 +346,8 @@ func (self *ClientWithRetry) HeaderByNumber(ctx context.Context, number *big.Int
 		}
 
 		for i, ethClient := range self.ethClients {
+			ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
+			defer cncl()
 			result, err := ethClient.HeaderByNumber(ctxRetry, number)
 			if err != nil {
 				level.Error(self.logger).Log("msg", "HeaderByNumber", "node", self.nodes[i], "err", err)
