@@ -4,13 +4,19 @@
 package testutil
 
 import (
+	"crypto/ecdsa"
 	"fmt"
+	"math/big"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pmezard/go-difflib/difflib"
 	"go.uber.org/goleak"
 )
@@ -152,4 +158,28 @@ func diff(expected interface{}, actual interface{}) string {
 		Context:  1,
 	})
 	return "\n\nDiff:\n" + diff
+}
+
+func GetSimBackend(t *testing.T, sk *ecdsa.PrivateKey) *backends.SimulatedBackend {
+
+	if sk == nil {
+		var err error
+		sk, err = crypto.GenerateKey()
+		Ok(t, err)
+	}
+
+	faucetAddr := crypto.PubkeyToAddress(sk.PublicKey)
+	addr := map[common.Address]core.GenesisAccount{
+		common.BytesToAddress([]byte{1}): {Balance: big.NewInt(1)}, // ECRecover
+		common.BytesToAddress([]byte{2}): {Balance: big.NewInt(1)}, // SHA256
+		common.BytesToAddress([]byte{3}): {Balance: big.NewInt(1)}, // RIPEMD
+		common.BytesToAddress([]byte{4}): {Balance: big.NewInt(1)}, // Identity
+		common.BytesToAddress([]byte{5}): {Balance: big.NewInt(1)}, // ModExp
+		common.BytesToAddress([]byte{6}): {Balance: big.NewInt(1)}, // ECAdd
+		common.BytesToAddress([]byte{7}): {Balance: big.NewInt(1)}, // ECScalarMul
+		common.BytesToAddress([]byte{8}): {Balance: big.NewInt(1)}, // ECPairing
+		faucetAddr:                       {Balance: new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(9))},
+	}
+	alloc := core.GenesisAlloc(addr)
+	return backends.NewSimulatedBackend(alloc, 80000000)
 }

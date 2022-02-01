@@ -10,8 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cryptoriums/packages/client/events"
+	"github.com/cryptoriums/packages/client/head"
 	ethereum_t "github.com/cryptoriums/packages/ethereum"
-	"github.com/cryptoriums/packages/events"
 	"github.com/cryptoriums/packages/logging"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -41,6 +42,7 @@ type ClientWithRetry struct {
 	rpcClients []*rpc.Client
 	netID      int64
 	ethereum.LogFilterer
+	head.HeadSubscriber
 }
 
 func NewClientWithRetry(ctx context.Context, logger log.Logger, cfg Config, envVars map[string]string) (ethereum_t.EthClientRpc, error) {
@@ -63,19 +65,29 @@ func NewClientWithRetry(ctx context.Context, logger log.Logger, cfg Config, envV
 		filterers = append(filterers, filterer)
 	}
 
+	var headSubscribers []head.HeadSubscriber
+	for _, headSubscriber := range ethClients {
+		headSubscribers = append(headSubscribers, headSubscriber)
+	}
+
 	return &ClientWithRetry{
-		logger:      log.With(logger, "component", ComponentName),
-		nodes:       nodes,
-		netID:       netID,
-		Client:      ethClients[0], // For the functions that don't offer redundancy just call the first client.
-		rpcClients:  rpcClients,
-		ethClients:  ethClients,
-		LogFilterer: events.NewLogFiltererWithRedundancy(logger, filterers),
+		logger:         log.With(logger, "component", ComponentName),
+		nodes:          nodes,
+		netID:          netID,
+		Client:         ethClients[0], // For the functions that don't offer redundancy just call the first client.
+		rpcClients:     rpcClients,
+		ethClients:     ethClients,
+		LogFilterer:    events.NewLogFiltererWithRedundancy(logger, filterers),
+		HeadSubscriber: head.NewHeadSubscriberWithRedundancy(logger, headSubscribers),
 	}, nil
 }
 
 func (self *ClientWithRetry) NetworkID() int64 {
 	return self.netID
+}
+
+func (self *ClientWithRetry) SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error) {
+	return self.HeadSubscriber.SubscribeNewHead(ctx, ch)
 }
 
 func (self *ClientWithRetry) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {

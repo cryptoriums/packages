@@ -9,37 +9,11 @@ import (
 
 	"github.com/bluele/gcache"
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
 )
-
-type EthClientWithFiltererRedundancy struct {
-	*ethclient.Client
-	bind.ContractFilterer
-}
-
-func NewEthClientWithFiltererRedundancy(logger log.Logger, clients []*ethclient.Client) *EthClientWithFiltererRedundancy {
-	var filterers []ethereum.LogFilterer
-	for _, client := range clients {
-		filterers = append(filterers, client)
-	}
-	return &EthClientWithFiltererRedundancy{
-		Client:           clients[0], // For the functions that don't offer redundancy just call the first client.
-		ContractFilterer: NewLogFiltererWithRedundancy(logger, filterers),
-	}
-}
-
-func (self *EthClientWithFiltererRedundancy) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
-	return self.ContractFilterer.FilterLogs(ctx, query)
-}
-
-func (self *EthClientWithFiltererRedundancy) SubscribeFilterLogs(ctx context.Context, query ethereum.FilterQuery, chDst chan<- types.Log) (ethereum.Subscription, error) {
-	return self.ContractFilterer.SubscribeFilterLogs(ctx, query, chDst)
-}
 
 // NewLogFiltererWithRedundancy creates a ContractFilterer that can use multiple backends and it ensures that the same logs is never sent twice.
 func NewLogFiltererWithRedundancy(logger log.Logger, logFilterers []ethereum.LogFilterer) ethereum.LogFilterer {
@@ -114,7 +88,7 @@ func (self *LogFiltererWithRedundancy) FilterLogs(ctx context.Context, query eth
 }
 
 func IsCached(logger log.Logger, cache gcache.Cache, log types.Log) bool {
-	hash := HashFromLogAllFields(log)
+	hash := HashFromFields(log)
 	_, err := cache.Get(hash)
 
 	if err != gcache.KeyNotFoundError {
@@ -125,7 +99,7 @@ func IsCached(logger log.Logger, cache gcache.Cache, log types.Log) bool {
 }
 
 func Cache(logger log.Logger, cache gcache.Cache, log types.Log) error {
-	hash := HashFromLogAllFields(log)
+	hash := HashFromFields(log)
 	level.Debug(logger).Log("msg", "caching log", "hash", hash)
 	return cache.Set(hash, true)
 }
@@ -228,16 +202,10 @@ func (self *MultiSubscription) Err() <-chan error {
 	return self.errDst
 }
 
-func hashFromLog(log types.Log) string {
-	// Using the topics data will cause a race when more than one TX include a log with the same topics, but it is highly unlikely.
+func HashFromFields(log types.Log) string {
 	topicStr := ""
 	for _, topic := range log.Topics {
 		topicStr += topic.Hex() + ","
 	}
-	return log.TxHash.Hex() + "-topics:" + topicStr
-}
-
-func HashFromLogAllFields(log types.Log) string {
-	hash := hashFromLog(log)
-	return hash + "-blockHash:" + log.BlockHash.Hex() + "-txIndex:" + log.TxHash.Hex() + "-removed:" + strconv.FormatBool(log.Removed)
+	return "TxHash:" + log.TxHash.Hex() + "-Topics:" + topicStr + "-BlockHash:" + log.BlockHash.Hex() + "-Index:" + strconv.Itoa(int(log.Index)) + "-Removed:" + strconv.FormatBool(log.Removed)
 }

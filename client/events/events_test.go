@@ -4,7 +4,6 @@
 package events
 
 import (
-	"crypto/ecdsa"
 	"math/big"
 	"strings"
 	"testing"
@@ -18,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
@@ -66,7 +64,7 @@ func TestLogsWithRedundancy(t *testing.T) {
 			backends     []*backends.SimulatedBackend
 		)
 		for i := 0; i < 4; i++ {
-			backend := getSimBackend(sk)
+			backend := testutil.GetSimBackend(t, sk)
 			_, _, contract, err := simple.DeploySimpleStorage(transactOpts, backend)
 			testutil.Ok(t, err)
 			_, err = contract.SetA(transactOpts, "1111")
@@ -87,11 +85,11 @@ func TestLogsWithRedundancy(t *testing.T) {
 
 	// 2 backends have different logs.
 	{
-		backend1 := getSimBackend(sk)
+		backend1 := testutil.GetSimBackend(t, sk)
 		_, _, contract1, err := simple.DeploySimpleStorage(transactOpts, backend1)
 		testutil.Ok(t, err)
 
-		backend2 := getSimBackend(sk)
+		backend2 := testutil.GetSimBackend(t, sk)
 		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
 		testutil.Ok(t, err)
 
@@ -120,11 +118,11 @@ func TestLogsWithRedundancy(t *testing.T) {
 
 	// 2 backends one has one extra log.
 	{
-		backend1 := getSimBackend(sk)
+		backend1 := testutil.GetSimBackend(t, sk)
 		_, _, contract1, err := simple.DeploySimpleStorage(transactOpts, backend1)
 		testutil.Ok(t, err)
 
-		backend2 := getSimBackend(sk)
+		backend2 := testutil.GetSimBackend(t, sk)
 		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
 		testutil.Ok(t, err)
 
@@ -152,11 +150,11 @@ func TestLogsWithRedundancy(t *testing.T) {
 
 	// Subscription with 2 backends both send the same logs.
 	{
-		backend1 := getSimBackend(sk)
+		backend1 := testutil.GetSimBackend(t, sk)
 		_, _, contract1, err := simple.DeploySimpleStorage(transactOpts, backend1)
 		testutil.Ok(t, err)
 
-		backend2 := getSimBackend(sk)
+		backend2 := testutil.GetSimBackend(t, sk)
 		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
 		testutil.Ok(t, err)
 
@@ -175,7 +173,7 @@ func TestLogsWithRedundancy(t *testing.T) {
 		testutil.Ok(t, err)
 		backend2.Commit()
 
-		logsExp, err := filterer.FilterLogs(ctx, query)
+		logsExp, err := backend1.FilterLogs(ctx, query)
 		testutil.Ok(t, err)
 
 		var logsAct []types.Log
@@ -192,11 +190,11 @@ func TestLogsWithRedundancy(t *testing.T) {
 
 	// Subscription with 2 backends one is missing a log.
 	{
-		backend1 := getSimBackend(sk)
+		backend1 := testutil.GetSimBackend(t, sk)
 		_, _, contract1, err := simple.DeploySimpleStorage(transactOpts, backend1)
 		testutil.Ok(t, err)
 
-		backend2 := getSimBackend(sk)
+		backend2 := testutil.GetSimBackend(t, sk)
 		_, _, contract2, err := simple.DeploySimpleStorage(transactOpts, backend2)
 		testutil.Ok(t, err)
 
@@ -217,7 +215,7 @@ func TestLogsWithRedundancy(t *testing.T) {
 		testutil.Ok(t, err)
 		backend2.Commit()
 
-		logsExp, err := filterer.FilterLogs(ctx, query)
+		logsExp, err := backend2.FilterLogs(ctx, query)
 		testutil.Ok(t, err)
 
 		var logsAct []types.Log
@@ -263,10 +261,10 @@ func TestMultipleSubsDeduplication(t *testing.T) {
 		Topics:    [][]common.Hash{{abi.Events["StorageSetB"].ID}},
 	}
 
-	// Different subscropitons shouldn't send to the same channel.
+	// Different subscripitons shouldn't send to the same channel.
 	{
 
-		backend := getSimBackend(sk)
+		backend := testutil.GetSimBackend(t, sk)
 		_, _, contract, err := simple.DeploySimpleStorage(transactOpts, backend)
 		testutil.Ok(t, err)
 
@@ -312,10 +310,10 @@ func TestMultipleSubsDeduplication(t *testing.T) {
 		}
 	}
 
-	// Ensure that the err channel receives an error when the subs is unsubscribed.
+	// Ensure that  the subs.Err() func receives an error even when one LogFilterer returns an error.
 	{
 
-		filterer := NewLogFiltererWithRedundancy(logger, []ethereum.LogFilterer{NewBackendSimulateErr()})
+		filterer := NewLogFiltererWithRedundancy(logger, []ethereum.LogFilterer{NewBackendSimulateErr(), testutil.GetSimBackend(t, nil)})
 
 		subs, err := filterer.SubscribeFilterLogs(ctx, ethereum.FilterQuery{}, nil)
 		testutil.Ok(t, err)
@@ -358,22 +356,4 @@ func (self *BackendSimulateErr) Err() <-chan error {
 
 func (self *BackendSimulateErr) Unsubscribe() {
 
-}
-
-func getSimBackend(sk *ecdsa.PrivateKey) *backends.SimulatedBackend {
-
-	faucetAddr := crypto.PubkeyToAddress(sk.PublicKey)
-	addr := map[common.Address]core.GenesisAccount{
-		common.BytesToAddress([]byte{1}): {Balance: big.NewInt(1)}, // ECRecover
-		common.BytesToAddress([]byte{2}): {Balance: big.NewInt(1)}, // SHA256
-		common.BytesToAddress([]byte{3}): {Balance: big.NewInt(1)}, // RIPEMD
-		common.BytesToAddress([]byte{4}): {Balance: big.NewInt(1)}, // Identity
-		common.BytesToAddress([]byte{5}): {Balance: big.NewInt(1)}, // ModExp
-		common.BytesToAddress([]byte{6}): {Balance: big.NewInt(1)}, // ECAdd
-		common.BytesToAddress([]byte{7}): {Balance: big.NewInt(1)}, // ECScalarMul
-		common.BytesToAddress([]byte{8}): {Balance: big.NewInt(1)}, // ECPairing
-		faucetAddr:                       {Balance: new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(9))},
-	}
-	alloc := core.GenesisAlloc(addr)
-	return backends.NewSimulatedBackend(alloc, 80000000)
 }

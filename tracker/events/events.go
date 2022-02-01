@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
+	"github.com/cryptoriums/packages/client/events"
 	ethereum_t "github.com/cryptoriums/packages/ethereum"
-	"github.com/cryptoriums/packages/events"
 	"github.com/cryptoriums/packages/logging"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -173,7 +173,7 @@ func (self *TrackerEvents) sendHistoricalLogs() error {
 	}
 	for _, log := range logs {
 		if events.IsCached(self.logger, self.cacheSentTXs, log) {
-			level.Info(self.logger).Log("msg", "skipping event that has already been sent", "id", events.HashFromLogAllFields(log))
+			level.Info(self.logger).Log("msg", "skipping event that has already been sent", "id", events.HashFromFields(log))
 			continue
 		}
 
@@ -199,7 +199,7 @@ func (self *TrackerEvents) listen(ctx context.Context, src chan types.Log) {
 			level.Info(self.logger).Log("msg", "subscription listener canceled")
 			return
 		case event := <-src:
-			hash := events.HashFromLogAllFields(event)
+			hash := events.HashFromFields(event)
 			level.Debug(self.logger).Log("msg", "new event received", "hash", hash)
 
 			if event.Removed {
