@@ -133,6 +133,31 @@ func (self *ClientWithRetry) CallContract(ctx context.Context, call ethereum.Cal
 	}
 }
 
+func (self *ClientWithRetry) TransactionByHash(ctx context.Context, hash common.Hash) (tx *types.Transaction, isPending bool, err error) {
+	ticker := time.NewTicker(time.Millisecond)
+	var resetTickerOnce sync.Once
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, false, ctx.Err()
+		case <-ticker.C:
+			resetTickerOnce.Do(func() { ticker.Reset(time.Second) })
+		}
+
+		for i, ethClient := range self.ethClients {
+			ctxRetry, cncl := context.WithTimeout(ctx, defaultRetry)
+			defer cncl()
+			tx, isPending, err := ethClient.TransactionByHash(ctxRetry, hash)
+			if err != nil {
+				level.Error(self.logger).Log("msg", "TransactionByHash", "node", self.nodes[i], "err", err)
+				continue
+			}
+			return tx, isPending, nil
+		}
+	}
+}
+
 func (self *ClientWithRetry) PendingNonceAt(ctx context.Context, account common.Address) (uint64, error) {
 	ticker := time.NewTicker(time.Millisecond)
 	var resetTickerOnce sync.Once
