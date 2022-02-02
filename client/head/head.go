@@ -114,7 +114,7 @@ func NewMultiSubscription(
 				case <-sub.ctx.Done():
 					return
 				case chDst <- header:
-					level.Debug(logger).Log("msg", "header sent", "TxHash", header.TxHash)
+					level.Debug(logger).Log("msg", "header sent", "block", header.Number.Int64())
 					err := Cache(logger, cacheStore, header)
 					if err != nil {
 						level.Error(logger).Log("msg", "setting cache", "err", err)
@@ -162,5 +162,5 @@ func (self *MultiSubscription) Err() <-chan error {
 }
 
 func HashFromAllFields(header *types.Header) string {
-	return "MixDigest:" + header.MixDigest.Hex() + "-ParentHash:" + header.ParentHash.Hex() + "-TxHash:" + header.TxHash.Hex() + "-UncleHash:" + header.UncleHash.Hex() + "-ReceiptHash:" + header.ReceiptHash.Hex() + "-Root:" + header.Root.Hex()
+	return "Number:" + header.Number.String() + "-MixDigest:" + header.MixDigest.Hex() + "-ParentHash:" + header.ParentHash.Hex() + "-TxHash:" + header.TxHash.Hex() + "-UncleHash:" + header.UncleHash.Hex() + "-ReceiptHash:" + header.ReceiptHash.Hex() + "-Root:" + header.Root.Hex()
 }
