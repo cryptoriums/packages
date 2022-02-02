@@ -59,7 +59,7 @@ func New(
 		dstChan:         dstChan,
 		reorgWaitPeriod: reorgWaitPeriod,
 		// To be on the safe side create the cache few times bigger then the expected block count during the reorg wait.
-		cacheHeadTX: gcache.New(int(math.Max(50, 3*ethereum_t.BlocksPerSecond*reorgWaitPeriod.Seconds()))).LRU().Build(),
+		cacheHeadTX: gcache.New(int(math.Max(100, 3*ethereum_t.BlocksPerSecond*reorgWaitPeriod.Seconds()))).LRU().Build(),
 	}, dstChan, nil
 }
 func (self *TrackerHead) Start() error {

@@ -24,7 +24,6 @@ func NewLogFiltererWithRedundancy(logger log.Logger, logFilterers []ethereum.Log
 		logger:       logger,
 		logFilterers: logFilterers,
 		err:          make(chan error),
-		cacheStore:   gcache.New(1000).LRU().Build(),
 	}
 }
 
@@ -32,7 +31,6 @@ type LogFiltererWithRedundancy struct {
 	logger       log.Logger
 	err          chan error
 	multiSubs    []*MultiSubscription
-	cacheStore   gcache.Cache
 	logFilterers []ethereum.LogFilterer
 }
 
@@ -121,7 +119,7 @@ func (self *LogFiltererWithRedundancy) SubscribeFilterLogs(ctx context.Context, 
 		errSrc = append(errSrc, sub.Err())
 	}
 
-	multiSub := NewMultiSubscription(ctx, self.logger, subs, chSrc, chDst, errSrc, self.cacheStore)
+	multiSub := NewMultiSubscription(ctx, self.logger, subs, chSrc, chDst, errSrc)
 
 	self.multiSubs = append(self.multiSubs, multiSub)
 
@@ -135,23 +133,23 @@ func NewMultiSubscription(
 	chSrc chan types.Log,
 	chDst chan<- types.Log,
 	errSrc []<-chan error,
-	cacheStore gcache.Cache,
 ) *MultiSubscription {
 	ctx, cncl := context.WithCancel(ctx)
 
 	sub := &MultiSubscription{
-		ctx:    ctx,
-		cncl:   cncl,
-		errDst: make(chan error),
-		subs:   subs,
-		errSrc: errSrc,
+		ctx:        ctx,
+		cncl:       cncl,
+		errDst:     make(chan error),
+		subs:       subs,
+		errSrc:     errSrc,
+		cacheStore: gcache.New(1000).LRU().Build(),
 	}
 
 	go func(chSrc chan types.Log, chDst chan<- types.Log) {
 		for {
 			select {
 			case log := <-chSrc:
-				if IsCached(logger, cacheStore, log) {
+				if IsCached(logger, sub.cacheStore, log) {
 					continue
 				}
 				select {
@@ -159,7 +157,7 @@ func NewMultiSubscription(
 					return
 				case chDst <- log:
 					level.Debug(logger).Log("msg", "event sent", "log", log.TxHash)
-					err := Cache(logger, cacheStore, log)
+					err := Cache(logger, sub.cacheStore, log)
 					if err != nil {
 						level.Error(logger).Log("msg", "setting cache", "err", err)
 					}
@@ -187,11 +185,12 @@ func NewMultiSubscription(
 }
 
 type MultiSubscription struct {
-	ctx    context.Context
-	cncl   context.CancelFunc
-	errDst chan error
-	errSrc []<-chan error
-	subs   []ethereum.Subscription
+	ctx        context.Context
+	cncl       context.CancelFunc
+	errDst     chan error
+	errSrc     []<-chan error
+	subs       []ethereum.Subscription
+	cacheStore gcache.Cache
 }
 
 func (self *MultiSubscription) Unsubscribe() {
@@ -210,7 +209,7 @@ func HashFromFields(log types.Log) string {
 	for _, topic := range log.Topics {
 		topicStr += topic.Hex() + ","
 	}
-	return "TxHash:" + log.TxHash.Hex() + "-Topics:" + topicStr + "-BlockHash:" + log.BlockHash.Hex() + "-Index:" + strconv.Itoa(int(log.Index)) + "-Removed:" + strconv.FormatBool(log.Removed)
+	return "BlockNum:" + strconv.Itoa(int(log.BlockNumber)) + "-TxHash:" + log.TxHash.Hex() + "-Topics:" + topicStr + "-BlockHash:" + log.BlockHash.Hex() + "-Index:" + strconv.Itoa(int(log.Index)) + "-Removed:" + strconv.FormatBool(log.Removed)
 }
 
 func CreateFilterQuery(addrs []common.Address, qI [][]interface{}, fromBlock *big.Int) (*ethereum.FilterQuery, error) {

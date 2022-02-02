@@ -17,7 +17,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-// TestHeadWithRedundancy ensures that events are deduplicated properly when using multiple backends.
+// TestHeadSubscriberWithRedundancy_SameHeaders ensures that events are deduplicated properly when using multiple backends.
 //
 //
 // Here is an example how to use with node urls.
@@ -28,7 +28,7 @@ import (
 // client := NewHeadSubscriberWithRedundancy(ctx, logger, []HeadSubscriber{infura, alchemy})
 // client.SubscribeNewHead(ctx, ch)
 // .
-func TestHeadSubscriberWithRedundancySameHeaders(t *testing.T) {
+func TestHeadSubscriberWithRedundancy_SameHeaders(t *testing.T) {
 	logger := logging.NewLogger()
 	logger, err := logging.ApplyFilter("debug", logger)
 	testutil.Ok(t, err)
@@ -82,7 +82,61 @@ func TestHeadSubscriberWithRedundancySameHeaders(t *testing.T) {
 	}
 }
 
-func TestHeadSubscriberWithRedundancyDifferentHeaders(t *testing.T) {
+// TestHeadSubscriberWithRedundancy_MultiCallsToSubscribeNewHead ensures that
+// multi calls to SubscribeNewHead gets a new cache and send subs to all subscribers.
+func TestHeadSubscriberWithRedundancy_MultiCallsToSubscribeNewHead(t *testing.T) {
+	logger := logging.NewLogger()
+	logger, err := logging.ApplyFilter("debug", logger)
+	testutil.Ok(t, err)
+
+	ctx := context.Background()
+
+	sk, err := crypto.GenerateKey()
+	testutil.Ok(t, err)
+
+	backend := testutil.GetSimBackend(t, sk)
+
+	chExp := make(chan *types.Header)
+	chAct1 := make(chan *types.Header)
+	chAct2 := make(chan *types.Header)
+
+	headSubscriber := NewHeadSubscriberWithRedundancy(logger, []HeadSubscriber{backend})
+
+	subsExp, err := backend.SubscribeNewHead(ctx, chExp)
+	testutil.Ok(t, err)
+	subsAct1, err := headSubscriber.SubscribeNewHead(ctx, chAct1)
+	testutil.Ok(t, err)
+	subsAct2, err := headSubscriber.SubscribeNewHead(ctx, chAct2)
+	testutil.Ok(t, err)
+
+	for i := 0; i < 100; i++ {
+		backend.Commit()
+
+		var headersExp []*types.Header
+		var headersAct1 []*types.Header
+		var headersAct2 []*types.Header
+		headersExp = append(headersExp, <-chExp)
+		headersAct1 = append(headersAct1, <-chAct1)
+		headersAct2 = append(headersAct2, <-chAct2)
+
+		testutil.Equals(t, headersExp, headersAct1)
+		testutil.Equals(t, headersExp, headersAct2)
+
+		select {
+		case header := <-chAct1:
+			t.Fatalf("there is an extra header:%+v", header)
+		case header := <-chAct2:
+			t.Fatalf("there is an extra header:%+v", header)
+		default:
+		}
+	}
+
+	subsExp.Unsubscribe()
+	subsAct1.Unsubscribe()
+	subsAct2.Unsubscribe()
+}
+
+func TestHeadSubscriberWithRedundancy_DifferentHeaders(t *testing.T) {
 	logger := logging.NewLogger()
 	logger, err := logging.ApplyFilter("debug", logger)
 	testutil.Ok(t, err)
@@ -133,7 +187,7 @@ func TestHeadSubscriberWithRedundancyDifferentHeaders(t *testing.T) {
 	subsAct.Unsubscribe()
 }
 
-func TestHeadSubscriberWithRedundancyOneHasExtraHeader(t *testing.T) {
+func TestHeadSubscriberWithRedundancy_OneHasExtraHeader(t *testing.T) {
 	logger := logging.NewLogger()
 	logger, err := logging.ApplyFilter("debug", logger)
 	testutil.Ok(t, err)
@@ -187,9 +241,9 @@ func TestHeadSubscriberWithRedundancyOneHasExtraHeader(t *testing.T) {
 	subsAct.Unsubscribe()
 }
 
-// TestHeadSubscriberWithRedundancyErrCh ensures that
+// TestHeadSubscriberWithRedundancy_ErrCh ensures that
 // the subs.Err() func receives an error even when one of the Headsubscribes returns an error.
-func TestHeadSubscriberWithRedundancyErrCh(t *testing.T) {
+func TestHeadSubscriberWithRedundancy_ErrCh(t *testing.T) {
 	logger := logging.NewLogger()
 	logger, err := logging.ApplyFilter("debug", logger)
 	testutil.Ok(t, err)

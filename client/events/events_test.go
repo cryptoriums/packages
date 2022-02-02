@@ -309,23 +309,89 @@ func TestMultipleSubsDeduplication(t *testing.T) {
 		default:
 		}
 	}
+}
 
-	// Ensure that  the subs.Err() func receives an error even when one LogFilterer returns an error.
-	{
+// TestMultipleSubsDeduplication_Cache ensures that
+// multiple calls to SubscribeFilterLogs gets a new cache and send a log to all subscribers.
+func TestMultipleSubsDeduplication_Cache(t *testing.T) {
+	logger := logging.NewLogger()
+	logger, err := logging.ApplyFilter("debug", logger)
+	logging.ExitOnError(logger, err)
+	ctx := context.Background()
 
-		filterer := NewLogFiltererWithRedundancy(logger, []ethereum.LogFilterer{NewBackendSimulateErr(), testutil.GetSimBackend(t, nil)})
+	abi, err := abi.JSON(strings.NewReader(simple.SimpleStorageABI))
+	testutil.Ok(t, err)
 
-		subs, err := filterer.SubscribeFilterLogs(ctx, ethereum.FilterQuery{}, nil)
+	sk, err := crypto.GenerateKey()
+	testutil.Ok(t, err)
+
+	transactOpts, err := bind.NewKeyedTransactorWithChainID(sk, big.NewInt(1337))
+	testutil.Ok(t, err)
+
+	query, err := CreateFilterQuery(
+		nil,
+		[][]interface{}{{abi.Events["StorageSetA"].ID}},
+		nil,
+	)
+	testutil.Ok(t, err)
+
+	backend := testutil.GetSimBackend(t, sk)
+	_, _, contract, err := simple.DeploySimpleStorage(transactOpts, backend)
+	testutil.Ok(t, err)
+
+	filterer := NewLogFiltererWithRedundancy(logger, []ethereum.LogFilterer{backend})
+
+	chExp := make(chan types.Log)
+	subs, err := backend.SubscribeFilterLogs(ctx, *query, chExp)
+	testutil.Ok(t, err)
+	defer subs.Unsubscribe()
+
+	chA := make(chan types.Log)
+	subs, err = filterer.SubscribeFilterLogs(ctx, *query, chA)
+	testutil.Ok(t, err)
+	defer subs.Unsubscribe()
+
+	chB := make(chan types.Log)
+	subs, err = filterer.SubscribeFilterLogs(ctx, *query, chB)
+	testutil.Ok(t, err)
+	defer subs.Unsubscribe()
+
+	for i := 0; i < 100; i++ {
+		_, err = contract.SetA(transactOpts, "")
 		testutil.Ok(t, err)
+		backend.Commit()
 
-		time.Sleep(time.Second)
-		select {
-		case <-subs.Err():
-		default:
-			t.Fatalf("no error was received")
-		}
-
+		expLog := <-chExp
+		testutil.Equals(t, expLog, <-chA)
+		testutil.Equals(t, expLog, <-chB)
 	}
+	select {
+	case log := <-chA:
+		t.Fatalf("there is an extra log:%+v", log)
+	default:
+	}
+}
+
+// TestLogFiltererWithRedundancy_ErrCh ensure that
+// the subs.Err() func receives an error even when one LogFilterer returns an error.
+func TestLogFiltererWithRedundancy_ErrCh(t *testing.T) {
+	logger := logging.NewLogger()
+	logger, err := logging.ApplyFilter("debug", logger)
+	logging.ExitOnError(logger, err)
+	ctx := context.Background()
+
+	filterer := NewLogFiltererWithRedundancy(logger, []ethereum.LogFilterer{NewBackendSimulateErr(), testutil.GetSimBackend(t, nil)})
+
+	subs, err := filterer.SubscribeFilterLogs(ctx, ethereum.FilterQuery{}, nil)
+	testutil.Ok(t, err)
+
+	time.Sleep(time.Second)
+	select {
+	case <-subs.Err():
+	default:
+		t.Fatalf("no error was received")
+	}
+
 }
 
 func NewBackendSimulateErr() *BackendSimulateErr {

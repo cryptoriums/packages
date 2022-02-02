@@ -24,7 +24,6 @@ func NewHeadSubscriber(logger log.Logger, headSubscribers []HeadSubscriber) Head
 		logger:          logger,
 		headSubscribers: headSubscribers,
 		err:             make(chan error),
-		cacheStore:      gcache.New(1000).LRU().Build(),
 	}
 }
 
@@ -34,7 +33,6 @@ func NewHeadSubscriberWithRedundancy(logger log.Logger, headSubscribers []HeadSu
 		logger:          logger,
 		headSubscribers: headSubscribers,
 		err:             make(chan error),
-		cacheStore:      gcache.New(1000).LRU().Build(),
 	}
 }
 
@@ -42,7 +40,6 @@ type HeadSubscriberWithRedundancy struct {
 	logger          log.Logger
 	err             chan error
 	multiSubs       []*MultiSubscription
-	cacheStore      gcache.Cache
 	headSubscribers []HeadSubscriber
 }
 
@@ -77,7 +74,7 @@ func (self *HeadSubscriberWithRedundancy) SubscribeNewHead(ctx context.Context, 
 		errSrc = append(errSrc, sub.Err())
 	}
 
-	multiSub := NewMultiSubscription(ctx, self.logger, subs, chSrc, chDst, errSrc, self.cacheStore)
+	multiSub := NewMultiSubscription(ctx, self.logger, subs, chSrc, chDst, errSrc)
 
 	self.multiSubs = append(self.multiSubs, multiSub)
 
@@ -91,23 +88,23 @@ func NewMultiSubscription(
 	chSrc chan *types.Header,
 	chDst chan<- *types.Header,
 	errSrc []<-chan error,
-	cacheStore gcache.Cache,
 ) *MultiSubscription {
 	ctx, cncl := context.WithCancel(ctx)
 
 	sub := &MultiSubscription{
-		ctx:    ctx,
-		cncl:   cncl,
-		errDst: make(chan error),
-		subs:   subs,
-		errSrc: errSrc,
+		ctx:        ctx,
+		cncl:       cncl,
+		errDst:     make(chan error),
+		subs:       subs,
+		errSrc:     errSrc,
+		cacheStore: gcache.New(1000).LRU().Build(),
 	}
 
 	go func(chSrc chan *types.Header, chDst chan<- *types.Header) {
 		for {
 			select {
 			case header := <-chSrc:
-				if IsCached(logger, cacheStore, header) {
+				if IsCached(logger, sub.cacheStore, header) {
 					continue
 				}
 				select {
@@ -115,7 +112,7 @@ func NewMultiSubscription(
 					return
 				case chDst <- header:
 					level.Debug(logger).Log("msg", "header sent", "block", header.Number)
-					err := Cache(logger, cacheStore, header)
+					err := Cache(logger, sub.cacheStore, header)
 					if err != nil {
 						level.Error(logger).Log("msg", "setting cache", "err", err)
 					}
@@ -143,11 +140,12 @@ func NewMultiSubscription(
 }
 
 type MultiSubscription struct {
-	ctx    context.Context
-	cncl   context.CancelFunc
-	errDst chan error
-	errSrc []<-chan error
-	subs   []ethereum.Subscription
+	ctx        context.Context
+	cncl       context.CancelFunc
+	errDst     chan error
+	errSrc     []<-chan error
+	subs       []ethereum.Subscription
+	cacheStore gcache.Cache
 }
 
 func (self *MultiSubscription) Unsubscribe() {
