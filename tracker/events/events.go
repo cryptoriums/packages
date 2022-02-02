@@ -107,7 +107,7 @@ func New(
 		reorgWaitPeriod:  reorgWaitPeriod,
 		reorgWaitPending: make(map[string]context.CancelFunc),
 		// To be on the safe side create the cache few times bigger then the expected block count during the reorg wait.
-		cacheSentTXs: gcache.New(int(math.Max(50, 100*ethereum_t.BlocksPerSecond*reorgWaitPeriod.Seconds()))).LRU().Build(),
+		cacheSentTXs: gcache.New(int(math.Max(100, 100*ethereum_t.BlocksPerSecond*reorgWaitPeriod.Seconds()))).LRU().Build(),
 	}, dstChan, nil
 }
 func (self *TrackerEvents) Start() error {

@@ -35,7 +35,7 @@ type LogFiltererWithRedundancy struct {
 }
 
 func (self *LogFiltererWithRedundancy) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
-	cacheStore := gcache.New(1000).LRU().Build()
+	cacheStore := gcache.New(100).LRU().Build()
 	var logsAll [][]types.Log
 	for _, logFilterer := range self.logFilterers {
 		logs, err := logFilterer.FilterLogs(ctx, query)
@@ -142,7 +142,7 @@ func NewMultiSubscription(
 		errDst:     make(chan error),
 		subs:       subs,
 		errSrc:     errSrc,
-		cacheStore: gcache.New(1000).LRU().Build(),
+		cacheStore: gcache.New(100).LRU().Build(),
 	}
 
 	go func(chSrc chan types.Log, chDst chan<- types.Log) {
