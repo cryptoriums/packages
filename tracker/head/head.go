@@ -11,7 +11,6 @@ import (
 
 	"github.com/bluele/gcache"
 	ethereum_t "github.com/cryptoriums/packages/ethereum"
-	"github.com/cryptoriums/packages/logging"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -48,10 +47,6 @@ func New(
 	client ethereum.ChainReader,
 	reorgWaitPeriod time.Duration,
 ) (*TrackerHead, chan *types.Block, error) {
-	logger, err := logging.ApplyFilter("info", logger)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "apply filter logger")
-	}
 	logger = log.With(logger, "component", ComponentName)
 	ctx, stop := context.WithCancel(ctx)
 

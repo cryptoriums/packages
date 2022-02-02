@@ -16,7 +16,6 @@ import (
 	ethereum_t "github.com/cryptoriums/packages/ethereum"
 	"github.com/cryptoriums/packages/logging"
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
@@ -284,19 +283,13 @@ func (self *TrackerEvents) waitSubscribe() (chan types.Log, event.Subscription, 
 }
 
 func (self *TrackerEvents) createFilterQuery() (*ethereum.FilterQuery, error) {
-	topics, err := abi.MakeTopics(self.eventQuery...)
+	self.mtx.Lock()
+	defer self.mtx.Unlock()
+	q, err := events.CreateFilterQuery(self.addrs, self.eventQuery, self.fromBlock)
 	if err != nil {
 		return nil, err
 	}
-	self.mtx.Lock()
-	q := &ethereum.FilterQuery{
-		Addresses: self.addrs,
-		Topics:    topics,
-		FromBlock: self.fromBlock,
-	}
-	self.mtx.Unlock()
-
-	level.Debug(self.logger).Log("msg", "query created", "params", fmt.Sprintf("%+v", q))
+	defer level.Debug(self.logger).Log("msg", "query created", "params", fmt.Sprintf("%+v", q))
 	return q, nil
 }
 

@@ -5,10 +5,13 @@ package events
 
 import (
 	"context"
+	"math/big"
 	"strconv"
 
 	"github.com/bluele/gcache"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -208,4 +211,19 @@ func HashFromFields(log types.Log) string {
 		topicStr += topic.Hex() + ","
 	}
 	return "TxHash:" + log.TxHash.Hex() + "-Topics:" + topicStr + "-BlockHash:" + log.BlockHash.Hex() + "-Index:" + strconv.Itoa(int(log.Index)) + "-Removed:" + strconv.FormatBool(log.Removed)
+}
+
+func CreateFilterQuery(addrs []common.Address, qI [][]interface{}, fromBlock *big.Int) (*ethereum.FilterQuery, error) {
+	topics, err := abi.MakeTopics(qI...)
+	if err != nil {
+		return nil, err
+	}
+
+	q := &ethereum.FilterQuery{
+		Addresses: addrs,
+		Topics:    topics,
+		FromBlock: fromBlock,
+	}
+
+	return q, nil
 }
