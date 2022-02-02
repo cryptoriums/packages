@@ -102,7 +102,7 @@ func (self *TrackerHead) listen(src chan *types.Header) {
 			level.Info(self.logger).Log("msg", "subscription listener canceled")
 			return
 		case event := <-src:
-			logger := log.With(self.logger, "block", event.Number.Int64())
+			logger := log.With(self.logger, "block", event.Number)
 
 			level.Debug(logger).Log("msg", "new block")
 			if self.reorgWaitPeriod == 0 {

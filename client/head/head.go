@@ -114,7 +114,7 @@ func NewMultiSubscription(
 				case <-sub.ctx.Done():
 					return
 				case chDst <- header:
-					level.Debug(logger).Log("msg", "header sent", "block", header.Number.Int64())
+					level.Debug(logger).Log("msg", "header sent", "block", header.Number)
 					err := Cache(logger, cacheStore, header)
 					if err != nil {
 						level.Error(logger).Log("msg", "setting cache", "err", err)
