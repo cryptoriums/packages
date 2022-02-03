@@ -285,7 +285,7 @@ func (self *TrackerEvents) waitSubscribe() (chan types.Log, event.Subscription, 
 func (self *TrackerEvents) createFilterQuery() (*ethereum.FilterQuery, error) {
 	self.mtx.Lock()
 	defer self.mtx.Unlock()
-	q, err := events.CreateFilterQuery(self.addrs, self.eventQuery, self.fromBlock)
+	q, err := events.CreateFilterQuery(self.addrs, self.eventQuery, self.fromBlock, nil)
 	if err != nil {
 		return nil, err
 	}

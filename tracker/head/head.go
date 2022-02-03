@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -63,11 +62,8 @@ func New(
 	}, dstChan, nil
 }
 func (self *TrackerHead) Start() error {
-	level.Info(self.logger).Log("msg", "starting",
-		"reorgWaitPeriod", self.reorgWaitPeriod,
-	)
+	level.Info(self.logger).Log("msg", "starting", "reorgWaitPeriod", self.reorgWaitPeriod)
 
-	// Initial subscription.
 	src, subs := self.waitSubscribe()
 	defer func() {
 		if subs != nil {
@@ -84,10 +80,6 @@ func (self *TrackerHead) Start() error {
 		case err := <-subs.Err():
 			level.Error(self.logger).Log("msg", "subscription failed will try to resubscribe", "err", err)
 			src, subs = self.waitSubscribe()
-
-			if err != nil {
-				return errors.Wrap(err, "creating subs, this should never happen")
-			}
 			self.listen(src)
 		}
 	}
@@ -163,7 +155,6 @@ func (self *TrackerHead) Stop() {
 }
 
 func (self *TrackerHead) waitSubscribe() (chan *types.Header, event.Subscription) {
-
 	output := make(chan *types.Header)
 
 	ticker := time.NewTicker(1)

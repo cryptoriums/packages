@@ -212,7 +212,7 @@ func HashFromFields(log types.Log) string {
 	return "BlockNum:" + strconv.Itoa(int(log.BlockNumber)) + "-TxHash:" + log.TxHash.Hex() + "-Topics:" + topicStr + "-BlockHash:" + log.BlockHash.Hex() + "-Index:" + strconv.Itoa(int(log.Index)) + "-Removed:" + strconv.FormatBool(log.Removed)
 }
 
-func CreateFilterQuery(addrs []common.Address, qI [][]interface{}, fromBlock *big.Int) (*ethereum.FilterQuery, error) {
+func CreateFilterQuery(addrs []common.Address, qI [][]interface{}, fromBlock *big.Int, toBlock *big.Int) (*ethereum.FilterQuery, error) {
 	topics, err := abi.MakeTopics(qI...)
 	if err != nil {
 		return nil, err
@@ -222,6 +222,7 @@ func CreateFilterQuery(addrs []common.Address, qI [][]interface{}, fromBlock *bi
 		Addresses: addrs,
 		Topics:    topics,
 		FromBlock: fromBlock,
+		ToBlock:   toBlock,
 	}
 
 	return q, nil
