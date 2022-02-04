@@ -60,6 +60,8 @@ func TestHeadSubscriberWithRedundancy_SameHeaders(t *testing.T) {
 		subsAct, err := headSubscriber.SubscribeNewHead(ctx, chAct)
 		testutil.Ok(t, err)
 
+		time.Sleep(time.Second)
+
 		for _, b := range backends {
 			b.Commit()
 		}
@@ -108,6 +110,8 @@ func TestHeadSubscriberWithRedundancy_MultiCallsToSubscribeNewHead(t *testing.T)
 	testutil.Ok(t, err)
 	subsAct2, err := headSubscriber.SubscribeNewHead(ctx, chAct2)
 	testutil.Ok(t, err)
+
+	time.Sleep(time.Second)
 
 	for i := 0; i < 100; i++ {
 		backend.Commit()
@@ -164,6 +168,8 @@ func TestHeadSubscriberWithRedundancy_DifferentHeaders(t *testing.T) {
 	subsAct, err := headSubscriber.SubscribeNewHead(ctx, chAct)
 	testutil.Ok(t, err)
 
+	time.Sleep(time.Second)
+
 	backend1.Commit()
 	backend2.Commit()
 
@@ -214,6 +220,8 @@ func TestHeadSubscriberWithRedundancy_OneHasExtraHeader(t *testing.T) {
 	testutil.Ok(t, err)
 	subsAct, err := headSubscriber.SubscribeNewHead(ctx, chAct)
 	testutil.Ok(t, err)
+
+	time.Sleep(time.Second)
 
 	backend1.Commit()
 	backend2.Commit()
