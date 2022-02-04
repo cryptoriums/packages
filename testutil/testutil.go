@@ -4,13 +4,17 @@
 package testutil
 
 import (
+	"bufio"
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
@@ -18,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pmezard/go-difflib/difflib"
+	"github.com/prometheus/tsdb/testutil"
 	"go.uber.org/goleak"
 )
 
@@ -65,6 +70,35 @@ func Ok(tb testing.TB, err error, v ...interface{}) {
 		msg = fmt.Sprintf(v[0].(string), v[1:]...)
 	}
 	tb.Fatalf("\033[31m%s:%d:"+msg+"\n\n unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
+}
+
+func HardhatFork(t testing.TB, args ...string) *exec.Cmd {
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	cmdReader, err := cmd.StdoutPipe()
+	Ok(t, err)
+	cmd.Stderr = cmd.Stdout
+
+	go func() {
+		scanner := bufio.NewScanner(cmdReader)
+		scanner.Split(bufio.ScanLines)
+		for scanner.Scan() {
+			m := scanner.Text()
+			t.Log(m)
+		}
+	}()
+
+	testutil.Ok(t, cmd.Start())
+
+	time.Sleep(10 * time.Second)
+	return cmd
+}
+
+func KillCmd(t testing.TB, cmd *exec.Cmd) {
+	pgid, err := syscall.Getpgid(cmd.Process.Pid)
+	testutil.Ok(t, err)
+	testutil.Ok(t, syscall.Kill(-pgid, 15))
 }
 
 // NotOk fails the test if an err is nil.
