@@ -8,6 +8,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"net"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -22,7 +23,6 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pmezard/go-difflib/difflib"
-	"github.com/prometheus/tsdb/testutil"
 	"go.uber.org/goleak"
 )
 
@@ -89,16 +89,28 @@ func HardhatFork(t testing.TB, args ...string) *exec.Cmd {
 		}
 	}()
 
-	testutil.Ok(t, cmd.Start())
+	Ok(t, cmd.Start())
 
-	time.Sleep(10 * time.Second)
+	for {
+		conn, err := net.DialTimeout("tcp", net.JoinHostPort("localhost", "8545"), time.Second)
+		if err == nil {
+			break
+		}
+		if conn != nil {
+			defer conn.Close()
+		}
+		t.Log("error connecting will retry")
+		time.Sleep(time.Second)
+	}
+	time.Sleep(2 * time.Second)
+
 	return cmd
 }
 
 func KillCmd(t testing.TB, cmd *exec.Cmd) {
 	pgid, err := syscall.Getpgid(cmd.Process.Pid)
-	testutil.Ok(t, err)
-	testutil.Ok(t, syscall.Kill(-pgid, 15))
+	Ok(t, err)
+	Ok(t, syscall.Kill(-pgid, 15))
 }
 
 // NotOk fails the test if an err is nil.
