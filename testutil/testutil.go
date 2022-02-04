@@ -22,6 +22,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/pkg/errors"
 	"github.com/pmezard/go-difflib/difflib"
 	"go.uber.org/goleak"
 )
@@ -55,6 +57,27 @@ func Assert(tb testing.TB, condition bool, v ...interface{}) {
 		msg = fmt.Sprintf(v[0].(string), v[1:]...)
 	}
 	tb.Fatalf("\033[31m%s:%d: "+msg+"\033[39m\n\n", filepath.Base(file), line)
+}
+
+func IsRevertErrWithMessage(tb testing.TB, err error, msg string) {
+	_, file, line, _ := runtime.Caller(1)
+
+	errRpc, ok := errors.Cause(err).(rpc.Error)
+	if !ok {
+		tb.Fatalf("\033[31m%s:%d:not a rpc.Error\n\n unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
+	}
+
+	// Internal JSON-RPC error.
+	// https://www.jsonrpc.org/specification
+	if errRpc.ErrorCode() != -32603 {
+		tb.Fatalf("\033[31m%s:%d:not a expected revert code\n\n unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
+	}
+
+	if msg != "" {
+		if errRpc.Error() != fmt.Sprintf("Error: VM Exception while processing transaction: reverted with reason string '%v'", msg) {
+			tb.Fatalf("\033[31m%s:%d:not a expected revert message"+msg+"\n\n unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
+		}
+	}
 }
 
 // Ok fails the test if an err is not nil.
@@ -102,7 +125,6 @@ func HardhatFork(t testing.TB, args ...string) *exec.Cmd {
 		t.Log("error connecting will retry")
 		time.Sleep(time.Second)
 	}
-	time.Sleep(2 * time.Second)
 
 	return cmd
 }

@@ -92,7 +92,7 @@ func SetBalance(ctx context.Context, nodeURL string, of common.Address, amnt *bi
 
 	err = rpcClient.CallContext(ctx, nil, "hardhat_setBalance", of, hexutil.EncodeBig(amnt))
 	if err != nil {
-		return errors.Wrap(err, "calling hardhat_impersonateAccount")
+		return errors.Wrap(err, "calling hardhat_setBalance")
 	}
 
 	return nil
