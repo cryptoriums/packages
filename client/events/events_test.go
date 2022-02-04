@@ -332,6 +332,7 @@ func TestMultipleSubsDeduplication_Cache(t *testing.T) {
 		nil,
 		[][]interface{}{{abi.Events["StorageSetA"].ID}},
 		nil,
+		nil,
 	)
 	testutil.Ok(t, err)
 
