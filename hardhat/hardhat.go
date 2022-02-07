@@ -19,6 +19,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const DefaultUrl = "ws://127.0.0.1:8545"
+
 func ReplaceContract(ctx context.Context, nodeURL string, contractPath string, contractName string, contractAddrToReplace common.Address) error {
 	rpcClient, err := rpc.DialContext(ctx, nodeURL)
 	if err != nil {
@@ -93,6 +95,20 @@ func SetBalance(ctx context.Context, nodeURL string, of common.Address, amnt *bi
 	err = rpcClient.CallContext(ctx, nil, "hardhat_setBalance", of, hexutil.EncodeBig(amnt))
 	if err != nil {
 		return errors.Wrap(err, "calling hardhat_setBalance")
+	}
+
+	return nil
+}
+
+func SetStorageAt(ctx context.Context, nodeURL string, addr common.Address, idx string, val string) error {
+	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+	if err != nil {
+		return errors.Wrap(err, "creating rpc client")
+	}
+
+	err = rpcClient.CallContext(ctx, nil, "hardhat_setStorageAt", addr.Hex(), idx, val)
+	if err != nil {
+		return errors.Wrap(err, "calling hardhat_setStorageAt")
 	}
 
 	return nil
