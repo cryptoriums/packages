@@ -99,16 +99,24 @@ func HardhatFork(t testing.TB, args ...string) *exec.Cmd {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	cmdReader, err := cmd.StdoutPipe()
+	cmdReaderStdOut, err := cmd.StdoutPipe()
 	Ok(t, err)
-	cmd.Stderr = cmd.Stdout
+	cmdReaderStdErr, err := cmd.StderrPipe()
+	Ok(t, err)
 
 	go func() {
-		scanner := bufio.NewScanner(cmdReader)
+		scanner := bufio.NewScanner(cmdReaderStdOut)
 		scanner.Split(bufio.ScanLines)
 		for scanner.Scan() {
-			m := scanner.Text()
-			t.Log(m)
+			t.Log(scanner.Text())
+		}
+	}()
+
+	go func() {
+		scanner := bufio.NewScanner(cmdReaderStdErr)
+		scanner.Split(bufio.ScanLines)
+		for scanner.Scan() {
+			panic(scanner.Text())
 		}
 	}()
 
@@ -132,7 +140,7 @@ func HardhatFork(t testing.TB, args ...string) *exec.Cmd {
 func KillCmd(t testing.TB, cmd *exec.Cmd) {
 	pgid, err := syscall.Getpgid(cmd.Process.Pid)
 	Ok(t, err)
-	Ok(t, syscall.Kill(-pgid, 15))
+	Ok(t, syscall.Kill(-pgid, 9))
 }
 
 // NotOk fails the test if an err is nil.
