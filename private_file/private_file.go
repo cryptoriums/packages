@@ -235,3 +235,29 @@ func SetEnvVars(envFileContent []byte) (map[string]string, error) {
 	}
 	return finalEnvVars, nil
 }
+
+func LoadEnvFile(ctx context.Context, logger log.Logger, envFilePath string, transact bool, host string, port uint) (map[string]string, error) {
+	envFileData, err := os.ReadFile(envFilePath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading the env file:%v", envFilePath)
+	}
+	if !util.IsText(envFileData) {
+		level.Info(logger).Log("msg", "env file is encrypted", "path", envFilePath)
+		if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+			transacting := `<span style="color:grey">disabled</span>`
+			if transact {
+				transacting = `<span style="color:red">enabled</span>`
+			}
+
+			level.Info(logger).Log("msg", "running inside k8s so will wait for web password decrypt input")
+			envFileData = DecryptWithWebPassword(ctx, logger, "<h2>Transacting is:"+transacting+"</h2>", envFileData, host, port)
+		} else {
+			envFileData, err = DecryptWithPasswordLoop(envFileData)
+			if err != nil {
+				return nil, errors.Wrap(err, "decrypt input file")
+			}
+		}
+	}
+
+	return SetEnvVars(envFileData)
+}
