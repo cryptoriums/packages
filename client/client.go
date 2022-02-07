@@ -12,7 +12,7 @@ import (
 
 	"github.com/cryptoriums/packages/client/events"
 	"github.com/cryptoriums/packages/client/head"
-	ethereum_t "github.com/cryptoriums/packages/ethereum"
+	ethereum_p "github.com/cryptoriums/packages/ethereum"
 	"github.com/cryptoriums/packages/logging"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -45,12 +45,12 @@ type ClientWithRetry struct {
 	head.HeadSubscriber
 }
 
-func NewClientWithRetry(ctx context.Context, logger log.Logger, cfg Config, envVars map[string]string) (ethereum_t.EthClientRpc, error) {
-	nodes, err := parseNodes(envVars)
+func NewClientWithRetry(ctx context.Context, logger log.Logger, cfg Config, envVars map[string]string) (ethereum_p.EthClientRpc, error) {
+	nodes, err := ParseNodes(envVars)
 	if err != nil {
 		return nil, err
 	}
-	ethClients, rpcClients, netID, err := ethereum_t.NewClients(ctx, logger, nodes)
+	ethClients, rpcClients, netID, err := ethereum_p.NewClients(ctx, logger, nodes)
 	if err != nil {
 		return nil, err
 	}
@@ -395,10 +395,10 @@ func (self *ClientWithRetry) HeaderByNumber(ctx context.Context, number *big.Int
 	}
 }
 
-func parseNodes(envVars map[string]string) ([]string, error) {
-	nodeURLs, ok := envVars[ethereum_t.NodeURLEnvName]
+func ParseNodes(envVars map[string]string) ([]string, error) {
+	nodeURLs, ok := envVars[ethereum_p.NodeURLEnvName]
 	if !ok {
-		return nil, errors.Errorf("the env var doesn't exist NodeURLEnvName:%v", ethereum_t.NodeURLEnvName)
+		return nil, errors.Errorf("the env var doesn't exist NodeURLEnvName:%v", ethereum_p.NodeURLEnvName)
 	}
 	nodes := strings.Split(nodeURLs, ",")
 	if len(nodes) == 0 {
