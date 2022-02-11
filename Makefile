@@ -140,4 +140,7 @@ build-prepare:
 	git add -A
 	git diff-index --quiet HEAD || git commit -m "go mod"
 
+.PHONY: download-booster
+download-booster:
+	contraget --path=0xf403c135812408bfbe8713b5a23a04b3d48aae31 --download-dst=contracts --network=mainnet --pkg-dst=pkg/contracts --name=booster
 

@@ -28,11 +28,11 @@ func ReplaceContract(ctx context.Context, nodeURL string, contractPath string, c
 	}
 
 	cfg := &contraget.Cli{
-		Path:       contractPath,
-		Name:       "contract",
-		ObjectsDst: "tmp",
+		Path:        contractPath,
+		Name:        "contract",
+		ObjectsDst:  "tmp",
+		DownloadDst: "tmp",
 	}
-	defer os.RemoveAll(cfg.DownloadDst)
 
 	if err := contraget.Run(cfg); err != nil {
 		return errors.Wrap(err, "generating the contract bin file")
