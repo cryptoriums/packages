@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"math/big"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -414,16 +415,27 @@ type SendTransactionOpts struct {
 func CompilerVersion(fileName string) (string, error) {
 	f, err := os.Open(fileName)
 	if err != nil {
-		return "", errors.Wrap(err, "opening the solidity file")
+		return "", errors.Wrap(err, "opening the source file")
 	}
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.Contains(line, "pragma solidity") {
-			idxStart := strings.Index(line, "0")
-			idxEnd := strings.Index(line, ";")
-			return "v" + line[idxStart:idxEnd], nil
+
+		switch ext := filepath.Ext(fileName); ext {
+		case ".sol":
+			if strings.Contains(line, "pragma solidity") {
+				idxStart := strings.Index(line, "0")
+				idxEnd := strings.Index(line, ";")
+				return "v" + line[idxStart:idxEnd], nil
+			}
+		case ".vy":
+			if strings.Contains(line, "@version") {
+				idxStart := strings.Index(line, "0")
+				return "v" + line[idxStart:], nil
+			}
+		default:
+			return "", errors.Errorf("unsupported file extension:%v", ext)
 		}
 	}
-	return "", errors.New("file doesn't contain solidity version")
+	return "", errors.New("source file doesn't contain compiler version")
 }
