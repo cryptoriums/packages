@@ -357,6 +357,8 @@ func TestMultipleSubsDeduplication_Cache(t *testing.T) {
 	testutil.Ok(t, err)
 	defer subs.Unsubscribe()
 
+	time.Sleep(time.Second)
+
 	for i := 0; i < 100; i++ {
 		_, err = contract.SetA(transactOpts, "")
 		testutil.Ok(t, err)

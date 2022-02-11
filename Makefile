@@ -126,10 +126,14 @@ $(SHELLCHECK): $(BIN_DIR)
 	curl -sNL "https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.$(OS).$(ARCH).tar.xz" | tar --strip-components=1 -xJf - -C $(BIN_DIR)
 
 .PHONY: test-ci
-test-ci: build-prepare test
+test-ci: install-deps build-prepare test
 
 .PHONY: lint-ci
 lint-ci: build-prepare lint
+
+.PHONY: install-deps
+install-deps:
+	npm install --save-dev
 
 .PHONY: build-prepare
 build-prepare:

@@ -5,10 +5,11 @@ package testutil
 
 import (
 	"bufio"
+	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
-	"net"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -22,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 	"github.com/pmezard/go-difflib/difflib"
@@ -95,6 +97,13 @@ func Ok(tb testing.TB, err error, v ...interface{}) {
 	tb.Fatalf("\033[31m%s:%d:"+msg+"\n\n unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
 }
 
+func OkIgnoreNotFount(tb testing.TB, err error, v ...interface{}) {
+	if os.IsNotExist(err) {
+		return
+	}
+	Ok(tb, err, v)
+}
+
 func HardhatFork(t testing.TB, args ...string) *exec.Cmd {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -123,17 +132,19 @@ func HardhatFork(t testing.TB, args ...string) *exec.Cmd {
 	Ok(t, cmd.Start())
 
 	for {
-		conn, err := net.DialTimeout("tcp", net.JoinHostPort("localhost", "8545"), time.Second)
+		ctx, cncl := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cncl()
+		client, err := ethclient.DialContext(ctx, "http://127.0.0.1:8545")
 		if err == nil {
-			break
+			_, err := client.BlockNumber(ctx)
+			if err == nil {
+				break
+			}
 		}
-		if conn != nil {
-			defer conn.Close()
-		}
+
 		t.Log("error connecting will retry")
 		time.Sleep(time.Second)
 	}
-
 	return cmd
 }
 

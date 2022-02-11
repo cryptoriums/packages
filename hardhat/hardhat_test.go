@@ -24,7 +24,7 @@ func TestReplaceContract(t *testing.T) {
 	ctx := context.Background()
 
 	envFileData, err := os.ReadFile("../.env")
-	testutil.Ok(t, err)
+	testutil.OkIgnoreNotFount(t, err)
 	envVars, err := private_file.SetEnvVars(envFileData)
 	testutil.Ok(t, err)
 	nodes, err := client.ParseNodes(envVars)
@@ -35,14 +35,14 @@ func TestReplaceContract(t *testing.T) {
 
 	err = ReplaceContract(
 		ctx,
-		"http://127.0.0.1:8545",
+		DefaultUrl,
 		"../contracts/Booster.sol",
 		"Booster",
 		common.HexToAddress("0xf403c135812408bfbe8713b5a23a04b3d48aae31"),
 	)
 	testutil.Ok(t, err)
 
-	client, err := ethclient.DialContext(ctx, "http://127.0.0.1:8545/")
+	client, err := ethclient.DialContext(ctx, DefaultUrl)
 	testutil.Ok(t, err)
 
 	boosterInstance, err := booster.NewBooster(common.HexToAddress("0xf403c135812408bfbe8713b5a23a04b3d48aae31"), client)
@@ -58,7 +58,8 @@ func TestImpersonateAccount(t *testing.T) {
 	ctx := context.Background()
 
 	envFileData, err := os.ReadFile("../.env")
-	testutil.Ok(t, err)
+	testutil.OkIgnoreNotFount(t, err)
+
 	envVars, err := private_file.SetEnvVars(envFileData)
 	testutil.Ok(t, err)
 	nodes, err := client.ParseNodes(envVars)
@@ -67,10 +68,9 @@ func TestImpersonateAccount(t *testing.T) {
 	cmd := testutil.HardhatFork(t, "npx", "hardhat", "node", "--fork", nodes[0], "--fork-block-number", "13858002")
 	defer testutil.KillCmd(t, cmd)
 
-	client, err := ethclient.DialContext(ctx, "http://127.0.0.1:8545/")
+	client, err := ethclient.DialContext(ctx, DefaultUrl)
 	testutil.Ok(t, err)
 
-	nodeURL := "http://127.0.0.1:8545"
 	from := common.HexToAddress("0xa3c5a1e09150b75ff251c1a7815a07182c3de2fb")
 	to := common.HexToAddress("0xf403c135812408bfbe8713b5a23a04b3d48aae31")
 	newAddr := common.HexToAddress("0x0")
@@ -78,7 +78,7 @@ func TestImpersonateAccount(t *testing.T) {
 	// Set some balance of the account which will run the impersonated TX.
 	{
 		newBalance := math_p.FloatToBigIntMul(1000, params.Ether)
-		err = SetBalance(ctx, nodeURL, from, newBalance)
+		err = SetBalance(ctx, DefaultUrl, from, newBalance)
 		testutil.Ok(t, err)
 
 		newAct, err := client.BalanceAt(ctx, from, nil)
@@ -88,7 +88,7 @@ func TestImpersonateAccount(t *testing.T) {
 
 	_, err = TxWithImpersonateAccount(
 		ctx,
-		nodeURL,
+		DefaultUrl,
 		from,
 		to,
 		booster.BoosterABI,
