@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/cryptoriums/packages/logging"
-	"github.com/cryptoriums/packages/testing/contracts/simple"
+	"github.com/cryptoriums/packages/testing/contracts/bindings/simple"
 	"github.com/cryptoriums/packages/testutil"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"

@@ -9,11 +9,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cryptoriums/contraget/pkg/contracts/gauge"
 	"github.com/cryptoriums/packages/client"
 	ethereum_p "github.com/cryptoriums/packages/ethereum"
-	"github.com/cryptoriums/packages/pkg/contracts/booster"
 	"github.com/cryptoriums/packages/private_file"
+	"github.com/cryptoriums/packages/testing/contracts/bindings/booster"
+	"github.com/cryptoriums/packages/testing/contracts/bindings/gauge"
 	"github.com/cryptoriums/packages/testutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"

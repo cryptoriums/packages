@@ -111,10 +111,6 @@ update-go-deps: ## Update all golang dependencies.
 	done
 	$(GO) mod tidy
 
-.PHONY: generate-bindings
-generate-bindings: $(CONTRAGET)
-	@$(CONTRAGET) --path=testing/contracts/simple.sol --pkg-dst=testing/contracts --name=simple
-
 
 ##### NON-phony targets
 
@@ -144,7 +140,9 @@ build-prepare:
 	git add -A
 	git diff-index --quiet HEAD || git commit -m "go mod"
 
-.PHONY: download-booster
-download-booster:
-	contraget --path=0xf403c135812408bfbe8713b5a23a04b3d48aae31 --download-dst=contracts --network=mainnet --pkg-dst=pkg/contracts --name=booster
-
+.PHONY: setup-testing
+setup-testing:
+	contraget --path=testing/contracts/source/Simple.sol --pkg-dst=testing/contracts/bindings --name=simple
+	contraget --path=0xf403c135812408bfbe8713b5a23a04b3d48aae31 --download-dst=testing/contracts/source --network=mainnet --pkg-dst=testing/contracts/bindings --name=booster
+	@sleep 6
+	contraget --path=0x1cEBdB0856dd985fAe9b8fEa2262469360B8a3a6 --download-dst=testing/contracts/source --network=mainnet --pkg-dst=testing/contracts/bindings --name=gauge

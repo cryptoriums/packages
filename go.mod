@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/bluele/gcache v0.0.2
-	github.com/cryptoriums/contraget v0.0.0-20220201000300-9a7e93ffba66
+	github.com/cryptoriums/contraget v0.0.0-20220210211402-90d84a92740a
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ethereum/go-ethereum v1.10.15
 	github.com/go-kit/log v0.2.0
@@ -50,5 +50,3 @@ require (
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )
-
-replace github.com/cryptoriums/contraget => ../contraget

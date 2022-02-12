@@ -11,8 +11,8 @@ import (
 
 	"github.com/cryptoriums/packages/client"
 	math_p "github.com/cryptoriums/packages/math"
-	"github.com/cryptoriums/packages/pkg/contracts/booster"
 	"github.com/cryptoriums/packages/private_file"
+	"github.com/cryptoriums/packages/testing/contracts/bindings/booster"
 	"github.com/cryptoriums/packages/testutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -36,7 +36,7 @@ func TestReplaceContract(t *testing.T) {
 	err = ReplaceContract(
 		ctx,
 		DefaultUrl,
-		"../contracts/Booster.sol",
+		"../testing/contracts/source/Booster.sol",
 		"Booster",
 		common.HexToAddress("0xf403c135812408bfbe8713b5a23a04b3d48aae31"),
 	)

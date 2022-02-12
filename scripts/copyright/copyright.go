@@ -43,9 +43,7 @@ func applyLicenseToProtoAndGo() error {
 		if (filepath.Ext(path) != ".proto" && filepath.Ext(path) != ".go") ||
 			// We copied this file and we want maintain its license (MIT).
 			path == "pkg/testutil/testutil.go" ||
-			path == "testing/contracts/simple/simple.go" || // Generated bindings.
-			// Generated file.
-			path == "pkg/ui/bindata.go" {
+			strings.Contains(path, "testing/contracts/bindings") { // Generated bindings.
 			return nil
 		}
 
