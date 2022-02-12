@@ -12,7 +12,6 @@ import (
 	"github.com/cryptoriums/packages/client"
 	ethereum_p "github.com/cryptoriums/packages/ethereum"
 	"github.com/cryptoriums/packages/private_file"
-	"github.com/cryptoriums/packages/testing/contracts/bindings/booster"
 	"github.com/cryptoriums/packages/testing/contracts/bindings/gauge"
 	"github.com/cryptoriums/packages/testutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -33,9 +32,6 @@ func TestEthCall(t *testing.T) {
 	client, err := ethereum_p.NewClientCachedNetID(ctx, log.NewNopLogger(), nodes[0])
 	testutil.Ok(t, err)
 
-	boosterInstance, err := booster.NewBooster(common.HexToAddress("0xf403c135812408bfbe8713b5a23a04b3d48aae31"), client)
-	testutil.Ok(t, err)
-
 	callOpts := &bind.CallOpts{
 		Context:     ctx,
 		BlockNumber: big.NewInt(14178089),
@@ -45,14 +41,12 @@ func TestEthCall(t *testing.T) {
 	testutil.Ok(t, err)
 
 	stakerAddr := common.HexToAddress("0x989aeb4d175e16225e39e87d0d97a3360524ad80")
-
-	pool, err := boosterInstance.PoolInfo(nil, big.NewInt(0))
-	testutil.Ok(t, err)
+	gaugeAddr := common.HexToAddress("0x7ca5b0a2910B33e9759DC7dDB0413949071D7575")
 
 	results := []interface{}{
 		new(*big.Int),
 	}
-	err = bind.NewBoundContract(pool.Gauge, *abi, client, client, client).Call(callOpts, &results, "claimable_tokens", stakerAddr)
+	err = bind.NewBoundContract(gaugeAddr, *abi, client, client, client).Call(callOpts, &results, "claimable_tokens", stakerAddr)
 	testutil.Ok(t, err)
 
 	r := results[0].(**big.Int)
