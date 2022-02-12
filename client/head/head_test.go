@@ -5,7 +5,6 @@ package head
 
 import (
 	"testing"
-	"time"
 
 	"github.com/cryptoriums/packages/logging"
 	"github.com/cryptoriums/packages/testutil"
@@ -60,8 +59,6 @@ func TestHeadSubscriberWithRedundancy_SameHeaders(t *testing.T) {
 		subsAct, err := headSubscriber.SubscribeNewHead(ctx, chAct)
 		testutil.Ok(t, err)
 
-		time.Sleep(time.Second)
-
 		for _, b := range backends {
 			b.Commit()
 		}
@@ -110,8 +107,6 @@ func TestHeadSubscriberWithRedundancy_MultiCallsToSubscribeNewHead(t *testing.T)
 	testutil.Ok(t, err)
 	subsAct2, err := headSubscriber.SubscribeNewHead(ctx, chAct2)
 	testutil.Ok(t, err)
-
-	time.Sleep(time.Second)
 
 	for i := 0; i < 100; i++ {
 		backend.Commit()
@@ -168,16 +163,18 @@ func TestHeadSubscriberWithRedundancy_DifferentHeaders(t *testing.T) {
 	subsAct, err := headSubscriber.SubscribeNewHead(ctx, chAct)
 	testutil.Ok(t, err)
 
-	time.Sleep(time.Second)
-
-	backend1.Commit()
-	backend2.Commit()
-
 	var headersExp []*types.Header
 	var headersAct []*types.Header
+
+	// The order of reading here matters to ensure that the
+	// logs arrive in the same order and
+	// also that the multi subscriber doesn't block the simulated backend sending.
+	backend1.Commit()
 	headersExp = append(headersExp, <-chExp1)
-	headersExp = append(headersExp, <-chExp2)
 	headersAct = append(headersAct, <-chAct)
+
+	backend2.Commit()
+	headersExp = append(headersExp, <-chExp2)
 	headersAct = append(headersAct, <-chAct)
 
 	testutil.Equals(t, headersExp, headersAct)
@@ -216,24 +213,29 @@ func TestHeadSubscriberWithRedundancy_OneHasExtraHeader(t *testing.T) {
 
 	subsExp1, err := backend1.SubscribeNewHead(ctx, chExp1)
 	testutil.Ok(t, err)
+
 	subsExp2, err := backend2.SubscribeNewHead(ctx, chExp2)
 	testutil.Ok(t, err)
+
 	subsAct, err := headSubscriber.SubscribeNewHead(ctx, chAct)
 	testutil.Ok(t, err)
 
-	time.Sleep(time.Second)
-
-	backend1.Commit()
-	backend2.Commit()
-	backend2.Commit()
-
 	var headersExp []*types.Header
 	var headersAct []*types.Header
+
+	// The order here matters to ensure that the
+	// logs arrive in the same order and
+	// also that the multi subscriber doesn't block the simulated backend sending.
+	backend1.Commit()
 	headersExp = append(headersExp, <-chExp1)
-	headersExp = append(headersExp, <-chExp2)
+	headersAct = append(headersAct, <-chAct)
+
+	backend2.Commit()
 	headersExp = append(headersExp, <-chExp2)
 	headersAct = append(headersAct, <-chAct)
-	headersAct = append(headersAct, <-chAct)
+
+	backend2.Commit()
+	headersExp = append(headersExp, <-chExp2)
 	headersAct = append(headersAct, <-chAct)
 
 	testutil.Equals(t, headersExp, headersAct)
@@ -258,12 +260,13 @@ func TestHeadSubscriberWithRedundancy_ErrCh(t *testing.T) {
 
 	ctx := context.Background()
 
-	headSubscriber := NewHeadSubscriberWithRedundancy(logger, []HeadSubscriber{NewBackendSimulateErr(), testutil.GetSimBackend(t, nil)})
+	errSent := make(chan struct{})
+	headSubscriber := NewHeadSubscriberWithRedundancy(logger, []HeadSubscriber{NewBackendSimulateErr(errSent), testutil.GetSimBackend(t, nil)})
 
 	subs, err := headSubscriber.SubscribeNewHead(ctx, nil)
 	testutil.Ok(t, err)
 
-	time.Sleep(time.Second)
+	<-errSent
 	select {
 	case <-subs.Err():
 	default:
@@ -272,10 +275,12 @@ func TestHeadSubscriberWithRedundancy_ErrCh(t *testing.T) {
 
 }
 
-func NewBackendSimulateErr() *BackendSimulateErr {
+func NewBackendSimulateErr(sent chan struct{}) *BackendSimulateErr {
 	e := make(chan error)
 	go func() {
 		e <- errors.New("xxx")
+		sent <- struct{}{}
+
 	}()
 	return &BackendSimulateErr{
 		err: e,
