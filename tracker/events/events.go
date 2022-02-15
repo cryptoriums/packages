@@ -210,14 +210,16 @@ func (self *TrackerEvents) listen(ctx context.Context, src chan types.Log) {
 			self.addPending(hash, cncl)
 
 			go func(ctxReorg context.Context, event types.Log, hash string) {
-				waitReorg := time.NewTicker(self.reorgWaitPeriod)
-				defer waitReorg.Stop()
+				if self.reorgWaitPeriod > 0 {
+					waitReorg := time.NewTicker(self.reorgWaitPeriod)
+					defer waitReorg.Stop()
 
-				select {
-				case <-waitReorg.C:
-				case <-ctxReorg.Done():
-					level.Debug(self.logger).Log("msg", "canceled due to reorg", "hash", hash)
-					return
+					select {
+					case <-waitReorg.C:
+					case <-ctxReorg.Done():
+						level.Debug(self.logger).Log("msg", "canceled due to reorg", "hash", hash)
+						return
+					}
 				}
 				// With short reorg wait it is possible to try and send the same TX twice so this check mitigates that.
 
