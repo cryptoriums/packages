@@ -27,6 +27,8 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 	"github.com/pmezard/go-difflib/difflib"
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"go.uber.org/goleak"
 )
 
@@ -269,4 +271,39 @@ func GetSimBackend(t *testing.T, sk *ecdsa.PrivateKey) *backends.SimulatedBacken
 	}
 	alloc := core.GenesisAlloc(addr)
 	return backends.NewSimulatedBackend(alloc, 80000000)
+}
+
+func ToFloat64(c prometheus.Collector, labelName, labelVal string) float64 {
+	var (
+		m     prometheus.Metric
+		mChan = make(chan prometheus.Metric)
+		done  = make(chan struct{})
+	)
+
+	pb := &dto.Metric{}
+	go func() {
+		for m = range mChan {
+			_pb := &dto.Metric{}
+			m.Write(_pb)
+			if *_pb.Label[0].Name == labelName && *_pb.Label[0].Value == labelVal {
+				pb = _pb
+			}
+		}
+		close(done)
+	}()
+
+	c.Collect(mChan)
+	close(mChan)
+	<-done
+
+	if pb.Gauge != nil {
+		return pb.Gauge.GetValue()
+	}
+	if pb.Counter != nil {
+		return pb.Counter.GetValue()
+	}
+	if pb.Untyped != nil {
+		return pb.Untyped.GetValue()
+	}
+	panic(fmt.Errorf("collected a non-gauge/counter/untyped metric: %s", pb))
 }
