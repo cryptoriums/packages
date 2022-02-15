@@ -39,7 +39,6 @@ func NewHeadSubscriberWithRedundancy(logger log.Logger, headSubscribers []HeadSu
 type HeadSubscriberWithRedundancy struct {
 	logger          log.Logger
 	err             chan error
-	multiSubs       []*MultiSubscription
 	headSubscribers []HeadSubscriber
 }
 
@@ -75,9 +74,6 @@ func (self *HeadSubscriberWithRedundancy) SubscribeNewHead(ctx context.Context, 
 	}
 
 	multiSub := NewMultiSubscription(ctx, self.logger, subs, chSrc, chDst, errSrc)
-
-	self.multiSubs = append(self.multiSubs, multiSub)
-
 	return multiSub, nil
 }
 
@@ -104,6 +100,7 @@ func NewMultiSubscription(
 		for {
 			select {
 			case header := <-chSrc:
+				level.Debug(logger).Log("msg", "new header", "block", header.Number)
 				if IsCached(logger, sub.cacheStore, header) {
 					continue
 				}
