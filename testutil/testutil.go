@@ -284,7 +284,9 @@ func ToFloat64(c prometheus.Collector, labelName, labelVal string) float64 {
 	go func() {
 		for m = range mChan {
 			_pb := &dto.Metric{}
-			m.Write(_pb)
+			if err := m.Write(_pb); err != nil {
+				panic(errors.Wrap(err, "writing into the dto metric"))
+			}
 			if *_pb.Label[0].Name == labelName && *_pb.Label[0].Value == labelVal {
 				pb = _pb
 			}
