@@ -80,8 +80,6 @@ func New(
 	}
 
 	if lookBack != 0 {
-		ctx, cncl := context.WithTimeout(ctx, time.Minute)
-		defer cncl()
 		blockNums := ethereum_t.BlocksPerMinute * lookBack.Minutes()
 
 		headerNow, err := client.HeaderByNumber(ctx, nil)
@@ -158,6 +156,15 @@ func (self *TrackerEvents) Start() error {
 			go self.listen(ctx, src)
 		}
 	}
+}
+
+func (self *TrackerEvents) HistoricalLogs(fromBlock int64) ([]types.Log, error) {
+	q, err := events.CreateFilterQuery(self.addrs, self.eventQuery, big.NewInt(fromBlock), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return self.client.FilterLogs(self.ctx, *q)
 }
 
 func (self *TrackerEvents) sendHistoricalLogs() error {
