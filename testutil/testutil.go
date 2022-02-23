@@ -29,6 +29,7 @@ import (
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/prometheus/pkg/labels"
 	"go.uber.org/goleak"
 )
 
@@ -136,14 +137,13 @@ func HardhatFork(t testing.TB, args ...string) *exec.Cmd {
 	for {
 		ctx, cncl := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cncl()
-		client, err := ethclient.DialContext(ctx, "http://127.0.0.1:8545")
+		client, err := ethclient.DialContext(ctx, "http://localhost:8545")
 		if err == nil {
 			_, err := client.BlockNumber(ctx)
 			if err == nil {
 				break
 			}
 		}
-
 		t.Log("error connecting will retry")
 		time.Sleep(time.Second)
 	}
@@ -273,7 +273,7 @@ func GetSimBackend(t *testing.T, sk *ecdsa.PrivateKey) *backends.SimulatedBacken
 	return backends.NewSimulatedBackend(alloc, 80000000)
 }
 
-func ToFloat64(c prometheus.Collector, labelName, labelVal string) float64 {
+func ToFloat64(c prometheus.Collector, labelsToMatch ...labels.Label) float64 {
 	var (
 		m     prometheus.Metric
 		mChan = make(chan prometheus.Metric)
@@ -282,14 +282,23 @@ func ToFloat64(c prometheus.Collector, labelName, labelVal string) float64 {
 
 	pb := &dto.Metric{}
 	go func() {
+	Main:
 		for m = range mChan {
 			_pb := &dto.Metric{}
 			if err := m.Write(_pb); err != nil {
 				panic(errors.Wrap(err, "writing into the dto metric"))
 			}
-			if *_pb.Label[0].Name == labelName && *_pb.Label[0].Value == labelVal {
+
+			if len(labelsToMatch) == 0 {
 				pb = _pb
+				continue Main
 			}
+			for i, l := range labelsToMatch {
+				if *_pb.Label[i].Name != l.Name || *_pb.Label[i].Value != l.Value {
+					continue Main
+				}
+			}
+			pb = _pb
 		}
 		close(done)
 	}()

@@ -14,9 +14,10 @@ require (
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.12.1
 	github.com/prometheus/client_model v0.2.0
-	go.uber.org/goleak v1.1.10
-	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
-	golang.org/x/tools v0.1.5
+	github.com/prometheus/prometheus v1.8.2-0.20220223151335-4b195fa080db
+	go.uber.org/goleak v1.1.12
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
+	golang.org/x/tools v0.1.9
 )
 
 require (
@@ -24,22 +25,23 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/deckarep/golang-set v0.0.0-20180603214616-504e848d77ea // indirect
-	github.com/edsrzf/mmap-go v1.0.0 // indirect
+	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-ole/go-ole v1.2.1 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/uuid v1.1.5 // indirect
+	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/nanmu42/etherscan-api v1.6.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
@@ -50,12 +52,12 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tklauser/go-sysconf v0.3.5 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
-	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
-	google.golang.org/protobuf v1.26.0 // indirect
+	golang.org/x/sys v0.0.0-20220222172238-00053529121e // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )
 
