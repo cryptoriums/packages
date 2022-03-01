@@ -26,6 +26,7 @@ func ReplaceContract(ctx context.Context, nodeURL string, contractPath string, c
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
+	defer rpcClient.Close()
 
 	cfg := &contraget.Cli{
 		Path:        contractPath,
@@ -43,11 +44,50 @@ func ReplaceContract(ctx context.Context, nodeURL string, contractPath string, c
 		return errors.Wrap(err, "reading the bin file")
 	}
 	bin := string(_bin)
-	indexDeployBin := strings.LastIndex(bin, "60806040523480156")
+	// For solidity contracts
+	startDeployBin := strings.LastIndex(bin, "60806040523480156")
+	// For vyper contracts.
+	if startDeployBin == -1 {
+		startDeployBin = strings.LastIndex(bin, "600436")
+	}
 
-	err = rpcClient.CallContext(ctx, nil, "hardhat_setCode", contractAddrToReplace, "0x"+bin[indexDeployBin:])
+	if startDeployBin == -1 {
+		return errors.New("start index of runtime Bytecode not found in the generated binary file")
+	}
+
+	err = rpcClient.CallContext(ctx, nil, "hardhat_setCode", contractAddrToReplace, "0x"+bin[startDeployBin:])
 	if err != nil {
 		return errors.Wrap(err, "hardhat_setCode call")
+	}
+
+	return nil
+}
+
+func Mine(ctx context.Context, nodeURL string) error {
+	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+	if err != nil {
+		return errors.Wrap(err, "creating rpc client")
+	}
+	defer rpcClient.Close()
+
+	err = rpcClient.CallContext(ctx, nil, "evm_mine")
+	if err != nil {
+		return errors.Wrap(err, "calling evm_mine")
+	}
+
+	return nil
+}
+
+func SetNextBlockTimestamp(ctx context.Context, nodeURL string, ts int64) error {
+	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+	if err != nil {
+		return errors.Wrap(err, "creating rpc client")
+	}
+	defer rpcClient.Close()
+
+	err = rpcClient.CallContext(ctx, nil, "evm_setNextBlockTimestamp", big.NewInt(ts))
+	if err != nil {
+		return errors.Wrap(err, "calling evm_setNextBlockTimestamp")
 	}
 
 	return nil
@@ -58,6 +98,7 @@ func TxWithImpersonateAccount(ctx context.Context, nodeURL string, from common.A
 	if err != nil {
 		return "", errors.Wrap(err, "creating rpc client")
 	}
+	defer rpcClient.Close()
 
 	err = rpcClient.CallContext(ctx, nil, "hardhat_impersonateAccount", from)
 	if err != nil {
@@ -91,6 +132,7 @@ func SetBalance(ctx context.Context, nodeURL string, of common.Address, amnt *bi
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
+	defer rpcClient.Close()
 
 	err = rpcClient.CallContext(ctx, nil, "hardhat_setBalance", of, hexutil.EncodeBig(amnt))
 	if err != nil {
@@ -105,6 +147,7 @@ func SetStorageAt(ctx context.Context, nodeURL string, addr common.Address, idx 
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
+	defer rpcClient.Close()
 
 	err = rpcClient.CallContext(ctx, nil, "hardhat_setStorageAt", addr.Hex(), idx, val)
 	if err != nil {

@@ -65,6 +65,9 @@ func Assert(tb testing.TB, condition bool, v ...interface{}) {
 }
 
 func IsRevertErrWithMessage(tb testing.TB, err error, msg string) {
+	if err == nil {
+		tb.Fatalf("\033[31m expected an error, but got nil\033[39m\n")
+	}
 	_, file, line, _ := runtime.Caller(1)
 
 	errRpc, ok := errors.Cause(err).(rpc.Error)
