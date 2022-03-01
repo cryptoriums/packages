@@ -61,3 +61,11 @@ func FloatToBigInt(input float64) *big.Int {
 	result, _ := big.NewFloat(input).Int(nil)
 	return result
 }
+
+// ConfidenceInDifference calculates the percentage difference between the max and min and subtract this from 100%.
+// Example:
+// min 1, max 2
+// Difference is 1 which is 100% so the final confidence is 100-100 equals 0%.
+func ConfidenceInDifference(min, max float64) float64 {
+	return 100 - (math.Abs(min-max)/min)*100
+}
