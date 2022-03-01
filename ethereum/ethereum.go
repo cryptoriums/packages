@@ -186,11 +186,7 @@ func AccountFromPrvKey(pkey string) (*Account, error) {
 	return &Account{Address: publicAddress, PrivateKey: privateKey}, nil
 }
 
-func NewClient(ctx context.Context, logger log.Logger, envVars map[string]string) (EthClient, error) {
-	nodeURL, ok := envVars[NodeURLEnvName]
-	if !ok {
-		return nil, errors.Errorf("missing NodeURLEnvNam:%v", NodeURLEnvName)
-	}
+func NewClient(ctx context.Context, logger log.Logger, nodeURL string) (EthClient, error) {
 	nodes := strings.Split(nodeURL, ",")
 	if len(nodes) == 0 {
 		return nil, errors.New("the env file doesn't contain any node urls")
@@ -328,7 +324,7 @@ func NewSignedTX(
 	return tx, hexutil.Encode(dataM), nil
 }
 
-func PrepareTxOpts(
+func NewTxOpts(
 	ctx context.Context,
 	client EthClient,
 	account *Account,
