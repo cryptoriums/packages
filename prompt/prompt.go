@@ -18,9 +18,7 @@
 //	   Use of this source code is governed by a BSD-style
 //	   license that can be found in the LICENSE file.
 
-//go:build ((linux && !appengine) || darwin) && linux
-// +build linux,!appengine darwin
-// +build linux
+//go:build darwin || linux
 
 // Package password provides a function to read passwords on the
 // command line on Linux and BSD Unix (including MacOS X) systems.
