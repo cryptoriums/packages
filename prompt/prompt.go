@@ -41,9 +41,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const ioctlReadTermios = syscall.TCGETS
-const ioctlWriteTermios = syscall.TCSETS
-
 var ErrKeyboardInterrupt = errors.New("keyboard interrupt")
 
 func Prompt(msg string, hidden bool) (string, error) {
