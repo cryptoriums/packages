@@ -4,22 +4,72 @@
 package hardhat
 
 import (
+	"bufio"
 	"context"
 	"math/big"
 	"os"
+	"os/exec"
 	"path"
 	"strings"
+	"syscall"
+	"time"
 
 	contraget "github.com/cryptoriums/contraget/pkg/cli"
 	"github.com/cryptoriums/packages/ethereum"
+	"github.com/cryptoriums/packages/logging"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
 )
 
 const DefaultUrl = "ws://127.0.0.1:8545"
+
+func Fork(logger log.Logger, args ...string) *exec.Cmd {
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	cmdReaderStdOut, err := cmd.StdoutPipe()
+	logging.ExitOnError(logger, err)
+	cmdReaderStdErr, err := cmd.StderrPipe()
+	logging.ExitOnError(logger, err)
+
+	go func() {
+		scanner := bufio.NewScanner(cmdReaderStdOut)
+		scanner.Split(bufio.ScanLines)
+		for scanner.Scan() {
+			level.Info(logger).Log(scanner.Text())
+		}
+	}()
+
+	go func() {
+		scanner := bufio.NewScanner(cmdReaderStdErr)
+		scanner.Split(bufio.ScanLines)
+		for scanner.Scan() {
+			panic(scanner.Text())
+		}
+	}()
+	logging.ExitOnError(logger, cmd.Start())
+
+	for {
+		ctx, cncl := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cncl()
+		client, err := ethclient.DialContext(ctx, "http://localhost:8545")
+		if err == nil {
+			_, err := client.BlockNumber(ctx)
+			if err == nil {
+				break
+			}
+		}
+		level.Info(logger).Log("error connecting will retry")
+		time.Sleep(time.Second)
+	}
+	return cmd
+}
 
 func ReplaceContract(ctx context.Context, nodeURL string, contractPath string, contractName string, contractAddrToReplace common.Address) error {
 	rpcClient, err := rpc.DialContext(ctx, nodeURL)

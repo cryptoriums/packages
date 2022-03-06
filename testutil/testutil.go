@@ -4,8 +4,6 @@
 package testutil
 
 import (
-	"bufio"
-	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
@@ -16,17 +14,13 @@ import (
 	"runtime"
 	"syscall"
 	"testing"
-	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/prometheus/client_golang/prometheus"
@@ -110,49 +104,6 @@ func OkIgnoreNotFount(tb testing.TB, err error, v ...interface{}) {
 		return
 	}
 	Ok(tb, err, v)
-}
-
-func HardhatFork(t testing.TB, logger log.Logger, args ...string) *exec.Cmd {
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-	cmdReaderStdOut, err := cmd.StdoutPipe()
-	Ok(t, err)
-	cmdReaderStdErr, err := cmd.StderrPipe()
-	Ok(t, err)
-
-	go func() {
-		scanner := bufio.NewScanner(cmdReaderStdOut)
-		scanner.Split(bufio.ScanLines)
-		for scanner.Scan() {
-			level.Info(logger).Log(scanner.Text())
-		}
-	}()
-
-	go func() {
-		scanner := bufio.NewScanner(cmdReaderStdErr)
-		scanner.Split(bufio.ScanLines)
-		for scanner.Scan() {
-			panic(scanner.Text())
-		}
-	}()
-
-	Ok(t, cmd.Start())
-
-	for {
-		ctx, cncl := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cncl()
-		client, err := ethclient.DialContext(ctx, "http://localhost:8545")
-		if err == nil {
-			_, err := client.BlockNumber(ctx)
-			if err == nil {
-				break
-			}
-		}
-		level.Info(logger).Log("error connecting will retry")
-		time.Sleep(time.Second)
-	}
-	return cmd
 }
 
 func KillCmd(t testing.TB, cmd *exec.Cmd) {
