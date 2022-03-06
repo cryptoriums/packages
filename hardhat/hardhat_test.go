@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/go-kit/log"
 )
 
 func TestReplaceContract(t *testing.T) {
@@ -30,7 +31,7 @@ func TestReplaceContract(t *testing.T) {
 	nodes, err := client.ParseNodes(envVars)
 	testutil.Ok(t, err)
 
-	cmd := testutil.HardhatFork(t, "npx", "hardhat", "node", "--fork", nodes[0], "--fork-block-number", "13858002")
+	cmd := testutil.HardhatFork(t, log.NewNopLogger(), "npx", "hardhat", "node", "--fork", nodes[0], "--fork-block-number", "13858002")
 	defer testutil.KillCmd(t, cmd)
 
 	err = ReplaceContract(
@@ -65,7 +66,7 @@ func TestImpersonateAccount(t *testing.T) {
 	nodes, err := client.ParseNodes(envVars)
 	testutil.Ok(t, err)
 
-	cmd := testutil.HardhatFork(t, "npx", "hardhat", "node", "--fork", nodes[0], "--fork-block-number", "13858002")
+	cmd := testutil.HardhatFork(t, log.NewNopLogger(), "npx", "hardhat", "node", "--fork", nodes[0], "--fork-block-number", "13858002")
 	defer testutil.KillCmd(t, cmd)
 
 	client, err := ethclient.DialContext(ctx, DefaultUrl)
