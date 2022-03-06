@@ -25,6 +25,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/prometheus/client_golang/prometheus"
@@ -110,7 +112,7 @@ func OkIgnoreNotFount(tb testing.TB, err error, v ...interface{}) {
 	Ok(tb, err, v)
 }
 
-func HardhatFork(t testing.TB, args ...string) *exec.Cmd {
+func HardhatFork(t testing.TB, logger log.Logger, args ...string) *exec.Cmd {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
@@ -123,7 +125,7 @@ func HardhatFork(t testing.TB, args ...string) *exec.Cmd {
 		scanner := bufio.NewScanner(cmdReaderStdOut)
 		scanner.Split(bufio.ScanLines)
 		for scanner.Scan() {
-			t.Log(scanner.Text())
+			level.Info(logger).Log(scanner.Text())
 		}
 	}()
 
@@ -147,7 +149,7 @@ func HardhatFork(t testing.TB, args ...string) *exec.Cmd {
 				break
 			}
 		}
-		t.Log("error connecting will retry")
+		level.Info(logger).Log("error connecting will retry")
 		time.Sleep(time.Second)
 	}
 	return cmd
