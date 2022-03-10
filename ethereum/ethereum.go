@@ -47,6 +47,7 @@ type EthClientRpc interface {
 }
 
 const (
+	TxGasOverHead      = 21_000
 	PrivateKeysEnvName = "ETH_PRIVATE_KEYS"
 	NodeURLEnvName     = "NODE_URLS"
 	ComponentName      = "ethereum"
