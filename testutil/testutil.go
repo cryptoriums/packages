@@ -274,3 +274,9 @@ func ToFloat64(c prometheus.Collector, labelsToMatch ...labels.Label) float64 {
 	}
 	panic(fmt.Errorf("collected a non-gauge/counter/untyped metric: %s", pb))
 }
+
+func SkipCI(t *testing.T) {
+	if os.Getenv("GITHUB_ACTIONS") != "" {
+		t.Skip("Skipping testing in GH Actions environment")
+	}
+}
