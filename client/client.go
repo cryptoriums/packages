@@ -398,7 +398,7 @@ func (self *ClientWithRetry) HeaderByNumber(ctx context.Context, number *big.Int
 func ParseNodes(envVars map[string]string) ([]string, error) {
 	nodeURLs, ok := envVars[ethereum_p.NodeURLEnvName]
 	if !ok {
-		return nil, errors.Errorf("the env var doesn't exist NodeURLEnvName:%v", ethereum_p.NodeURLEnvName)
+		return nil, errors.Errorf("the %v var is empty", ethereum_p.NodeURLEnvName)
 	}
 	nodes := strings.Split(nodeURLs, ",")
 	if len(nodes) == 0 {

@@ -42,7 +42,7 @@ func Fork(logger log.Logger, args ...string) *exec.Cmd {
 		scanner := bufio.NewScanner(cmdReaderStdOut)
 		scanner.Split(bufio.ScanLines)
 		for scanner.Scan() {
-			level.Info(logger).Log(scanner.Text())
+			level.Info(logger).Log("msg", scanner.Text())
 		}
 	}()
 
@@ -65,7 +65,7 @@ func Fork(logger log.Logger, args ...string) *exec.Cmd {
 				break
 			}
 		}
-		level.Info(logger).Log("error connecting will retry")
+		level.Error(logger).Log("msg", "error connecting will retry")
 		time.Sleep(time.Second)
 	}
 	return cmd
