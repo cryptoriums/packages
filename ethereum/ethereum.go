@@ -121,16 +121,8 @@ func Keccak256(input string) [32]byte {
 }
 
 type Account struct {
-	Address    common.Address
+	PublicKey  common.Address
 	PrivateKey *ecdsa.PrivateKey
-}
-
-func (a *Account) GetAddress() common.Address {
-	return a.Address
-}
-
-func (a *Account) GetPrivateKey() *ecdsa.PrivateKey {
-	return a.PrivateKey
 }
 
 func GetAccountByPubAddress(logger log.Logger, pubAddr string, envVars map[string]string) (*Account, error) {
@@ -140,11 +132,11 @@ func GetAccountByPubAddress(logger log.Logger, pubAddr string, envVars map[strin
 	}
 
 	for i, addr := range accounts {
-		if addr.Address.Hex() == pubAddr {
+		if addr.PublicKey.Hex() == pubAddr {
 			return accounts[i], nil
 		}
 	}
-	return nil, errors.Errorf("account not found:%v", pubAddr)
+	return nil, errors.Wrapf(os.ErrNotExist, "account not found:%v", pubAddr)
 }
 
 // GetAccounts returns a slice of Account from private keys in
@@ -165,7 +157,7 @@ func GetAccounts(logger log.Logger, envVars map[string]string) ([]*Account, erro
 		}
 
 		accounts[i] = account
-		level.Info(logger).Log("msg", "registered account", "addr", account.GetAddress().Hex())
+		level.Info(logger).Log("msg", "registered account", "addr", account.PublicKey.Hex())
 	}
 	return accounts, nil
 }
@@ -184,7 +176,7 @@ func AccountFromPrvKey(pkey string) (*Account, error) {
 	}
 
 	publicAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-	return &Account{Address: publicAddress, PrivateKey: privateKey}, nil
+	return &Account{PublicKey: publicAddress, PrivateKey: privateKey}, nil
 }
 
 func NewClient(ctx context.Context, logger log.Logger, nodeURL string) (EthClient, error) {
@@ -325,6 +317,38 @@ func NewSignedTX(
 	return tx, hexutil.Encode(dataM), nil
 }
 
+func NewSignedTXLegacy(
+	netID int64,
+	data []byte,
+	gasLimit uint64,
+	gasPrice *big.Int,
+	to common.Address,
+	nonce uint64,
+	prvKey *ecdsa.PrivateKey,
+	value float64,
+) (string, *types.Transaction, error) {
+	signer := types.LatestSignerForChainID(big.NewInt(netID))
+
+	tx, err := types.SignNewTx(prvKey, signer, &types.AccessListTx{
+		Gas:      gasLimit,
+		GasPrice: gasPrice,
+		To:       &to,
+		ChainID:  big.NewInt(netID),
+		Nonce:    nonce,
+		Data:     data,
+		Value:    math_t.FloatToBigIntMul(value, params.Ether),
+	})
+	if err != nil {
+		return "", nil, errors.Wrap(err, "sign transaction")
+	}
+	dataM, err := tx.MarshalBinary()
+	if err != nil {
+		return "", nil, errors.Wrap(err, "marshal tx data")
+	}
+
+	return hexutil.Encode(dataM), tx, nil
+}
+
 func NewTxOpts(
 	ctx context.Context,
 	client EthClient,
@@ -338,7 +362,7 @@ func NewTxOpts(
 		gasMaxFeeWei = math_t.FloatToBigIntMul(gasMaxFee, params.GWei)
 	}
 
-	nonce, err := client.PendingNonceAt(ctx, account.GetAddress())
+	nonce, err := client.PendingNonceAt(ctx, account.PublicKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting pending nonce")
 	}
@@ -363,7 +387,7 @@ func NewTxOpts(
 		gasMaxFeeWei = big.NewInt(0).Add(baseFee, gasMaxTip)
 	}
 
-	ethBalance, err := client.BalanceAt(ctx, account.GetAddress(), nil)
+	ethBalance, err := client.BalanceAt(ctx, account.PublicKey, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting balance")
 	}
@@ -374,7 +398,7 @@ func NewTxOpts(
 		return nil, errors.Errorf("insufficient ethereum to send a transaction: %v < %v", ethBalance, cost)
 	}
 
-	opts, err := bind.NewKeyedTransactorWithChainID(account.GetPrivateKey(), big.NewInt(client.NetworkID()))
+	opts, err := bind.NewKeyedTransactorWithChainID(account.PrivateKey, big.NewInt(client.NetworkID()))
 	if err != nil {
 		return nil, errors.Wrap(err, "creating transactor")
 	}
