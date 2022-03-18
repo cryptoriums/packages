@@ -19,7 +19,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cryptoriums/packages/prompt"
+	"github.com/ethereum/go-ethereum/console/prompt"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/joho/godotenv"
@@ -177,7 +177,7 @@ func DecryptWithPasswordLoop(input []byte) ([]byte, error) {
 
 	}
 	for {
-		pass, err := prompt.Prompt("Enter Password: ", true)
+		pass, err := prompt.Stdin.PromptPassword("Enter Password: ")
 		if err != nil {
 			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("getting password from terminal:", err)
@@ -195,7 +195,7 @@ func DecryptWithPasswordLoop(input []byte) ([]byte, error) {
 
 func EncryptWithPasswordLoop(inFile string, outFile string) error {
 	for {
-		pass, err := prompt.Prompt("Enter Password: ", true)
+		pass, err := prompt.Stdin.PromptPassword("Enter Password: ")
 		if err != nil {
 			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("getting password from terminal:", err)

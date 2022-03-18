@@ -3,6 +3,7 @@ module github.com/cryptoriums/packages
 go 1.17
 
 require (
+	github.com/alecthomas/kong v0.2.22
 	github.com/bluele/gcache v0.0.2
 	github.com/cryptoriums/contraget v0.0.0-20220210211402-90d84a92740a
 	github.com/davecgh/go-spew v1.1.1
@@ -12,9 +13,11 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
+	github.com/posener/complete v1.2.3
 	github.com/prometheus/client_golang v1.12.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/prometheus v1.8.2-0.20220223151335-4b195fa080db
+	github.com/willabides/kongplete v0.3.0
 	go.uber.org/goleak v1.1.12
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	golang.org/x/tools v0.1.9
@@ -43,10 +46,12 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/nanmu42/etherscan-api v1.6.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
+	github.com/peterh/liner v1.1.1-0.20190123174540-a2c9a5303de7 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/prometheus/tsdb v0.10.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
+	github.com/riywo/loginshell v0.0.0-20200815045211-7d26008be1ab // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
