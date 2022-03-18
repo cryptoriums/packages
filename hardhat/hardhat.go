@@ -80,7 +80,6 @@ func ReplaceContract(ctx context.Context, nodeURL string, contractPath string, c
 
 	cfg := &contraget.Cli{
 		Path:        contractPath,
-		Name:        "contract",
 		ObjectsDst:  "tmp",
 		DownloadDst: "tmp",
 	}

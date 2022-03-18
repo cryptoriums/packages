@@ -79,7 +79,7 @@ func IsRevertErrWithMessage(tb testing.TB, err error, msg string) {
 
 	if msg != "" {
 		if errRpc.Error() != fmt.Sprintf("Error: VM Exception while processing transaction: reverted with reason string '%v'", msg) {
-			tb.Fatalf("\033[31m%s:%d:not a expected revert message"+msg+"\n\n unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
+			tb.Fatalf("\033[31m%s:%d:not a expected revert message:"+msg+"\n\n unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
 		}
 	}
 }
