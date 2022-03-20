@@ -112,6 +112,8 @@ update-go-deps: ## Update all golang dependencies.
 	$(GO) mod tidy
 
 
+##### NON-phony targets
+
 $(BIN_DIR):
 	@mkdir -p $(BIN_DIR)
 
