@@ -23,6 +23,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/joho/godotenv"
+	"github.com/peterh/liner"
 	"github.com/pkg/errors"
 	"golang.org/x/tools/godoc/util"
 )
@@ -77,17 +78,14 @@ func Decrypt(data []byte, passphrase string) ([]byte, error) {
 }
 
 func EncryptFile(inFile string, outFile string, passphrase string) error {
-	out, err := os.Create(outFile)
-	if err != nil {
-		return errors.Wrap(err, "creating output file")
-	}
-	defer out.Close()
-
 	in, err := ioutil.ReadFile(inFile)
 	if err != nil {
 		return errors.Wrap(err, "reading input file")
 	}
+	return EncryptBytes(in, outFile, passphrase)
+}
 
+func EncryptBytes(in []byte, outFile string, passphrase string) error {
 	if !util.IsText(in) {
 		return errors.New("input is already encrypted")
 	}
@@ -96,6 +94,11 @@ func EncryptFile(inFile string, outFile string, passphrase string) error {
 	if err != nil {
 		return errors.Wrap(err, "encrypt")
 	}
+	out, err := os.Create(outFile)
+	if err != nil {
+		return errors.Wrap(err, "creating output file")
+	}
+	defer out.Close()
 
 	_, err = out.Write(bb)
 	if err != nil {
@@ -171,14 +174,17 @@ func DecryptWithWebPassword(ctx context.Context, logger log.Logger, header strin
 	return b[0]
 }
 
-func DecryptWithPasswordLoop(input []byte) ([]byte, error) {
+func DecryptWithPasswordLoop(input []byte) ([]byte, string, error) {
 	if util.IsText(input) {
-		return nil, errors.New("input is not encrypted")
+		return nil, "", errors.New("input is not encrypted")
 
 	}
 	for {
 		pass, err := prompt.Stdin.PromptPassword("Enter Password: ")
 		if err != nil {
+			if err == liner.ErrPromptAborted {
+				return nil, "", err
+			}
 			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("getting password from terminal:", err)
 			continue
@@ -189,7 +195,7 @@ func DecryptWithPasswordLoop(input []byte) ([]byte, error) {
 			fmt.Println("Decrypt error try again:", err)
 			continue
 		}
-		return output, nil
+		return output, pass, nil
 	}
 }
 
@@ -197,6 +203,9 @@ func EncryptWithPasswordLoop(inFile string, outFile string) error {
 	for {
 		pass, err := prompt.Stdin.PromptPassword("Enter Password: ")
 		if err != nil {
+			if err == liner.ErrPromptAborted {
+				return err
+			}
 			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("getting password from terminal:", err)
 			continue
@@ -252,7 +261,7 @@ func LoadEnvFile(ctx context.Context, logger log.Logger, envFilePath string, tra
 			level.Info(logger).Log("msg", "running inside k8s so will wait for web password decrypt input")
 			envFileData = DecryptWithWebPassword(ctx, logger, "<h2>Transacting is:"+transacting+"</h2>", envFileData, host, port)
 		} else {
-			envFileData, err = DecryptWithPasswordLoop(envFileData)
+			envFileData, _, err = DecryptWithPasswordLoop(envFileData)
 			if err != nil {
 				return nil, errors.Wrap(err, "decrypt input file")
 			}
