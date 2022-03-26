@@ -4,6 +4,7 @@
 package logging
 
 import (
+	logstd "log"
 	"os"
 	"time"
 
@@ -43,6 +44,9 @@ func ApplyFilter(configLevel string, logger log.Logger) (log.Logger, error) {
 
 func ExitOnError(logger log.Logger, err error) {
 	if err != nil {
+		if logger == nil {
+			logstd.Fatal(err)
+		}
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
 	}

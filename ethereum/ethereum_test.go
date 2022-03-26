@@ -6,12 +6,11 @@ package ethereum_test
 import (
 	"context"
 	"math/big"
-	"os"
 	"testing"
 
-	"github.com/cryptoriums/packages/client"
+	"github.com/cryptoriums/packages/env"
+	"github.com/cryptoriums/packages/ethereum"
 	ethereum_p "github.com/cryptoriums/packages/ethereum"
-	"github.com/cryptoriums/packages/private_file"
 	"github.com/cryptoriums/packages/testing/contracts/bindings/gauge"
 	"github.com/cryptoriums/packages/testutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -22,14 +21,14 @@ import (
 func TestEthCall(t *testing.T) {
 	ctx := context.Background()
 
-	envFileData, err := os.ReadFile("../.env")
-	testutil.OkIgnoreNotFount(t, err)
-	envVars, err := private_file.SetEnvVars(envFileData)
+	envs, err := env.LoadFromEnvVarOrFile("env", "../env.json")
 	testutil.Ok(t, err)
-	nodes, err := client.ParseNodes(envVars)
-	testutil.Ok(t, err)
+	env, ok := env.EnvForNetwork(envs, ethereum.MainnetName)
+	if !ok {
+		t.Fatal("env for mainnet couldn't be loaded")
+	}
 
-	client, err := ethereum_p.NewClientCachedNetID(ctx, log.NewNopLogger(), nodes[0])
+	client, err := ethereum_p.NewClientCachedNetID(ctx, log.NewNopLogger(), env.Nodes[0])
 	testutil.Ok(t, err)
 
 	callOpts := &bind.CallOpts{

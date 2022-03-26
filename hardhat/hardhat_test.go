@@ -6,12 +6,11 @@ package hardhat
 import (
 	"context"
 	"math/big"
-	"os"
 	"testing"
 
-	"github.com/cryptoriums/packages/client"
+	"github.com/cryptoriums/packages/env"
+	"github.com/cryptoriums/packages/ethereum"
 	math_p "github.com/cryptoriums/packages/math"
-	"github.com/cryptoriums/packages/private_file"
 	"github.com/cryptoriums/packages/testing/contracts/bindings/booster"
 	"github.com/cryptoriums/packages/testutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -24,14 +23,14 @@ import (
 func TestReplaceContract(t *testing.T) {
 	ctx := context.Background()
 
-	envFileData, err := os.ReadFile("../.env")
-	testutil.OkIgnoreNotFount(t, err)
-	envVars, err := private_file.SetEnvVars(envFileData)
+	envs, err := env.LoadFromEnvVarOrFile("env", "../env.json")
 	testutil.Ok(t, err)
-	nodes, err := client.ParseNodes(envVars)
-	testutil.Ok(t, err)
+	env, ok := env.EnvForNetwork(envs, ethereum.MainnetName)
+	if !ok {
+		t.Fatal("env for mainnet couldn't be loaded")
+	}
 
-	cmd := Fork(log.NewNopLogger(), "npx", "hardhat", "node", "--fork", nodes[0], "--fork-block-number", "13858002")
+	cmd := Fork(log.NewNopLogger(), "npx", "hardhat", "node", "--fork", env.Nodes[0], "--fork-block-number", "13858002")
 	defer testutil.KillCmd(t, cmd)
 
 	err = ReplaceContract(
@@ -58,15 +57,12 @@ func TestReplaceContract(t *testing.T) {
 func TestImpersonateAccount(t *testing.T) {
 	ctx := context.Background()
 
-	envFileData, err := os.ReadFile("../.env")
-	testutil.OkIgnoreNotFount(t, err)
-
-	envVars, err := private_file.SetEnvVars(envFileData)
+	envs, err := env.LoadFromEnvVarOrFile("env", "../env.json")
 	testutil.Ok(t, err)
-	nodes, err := client.ParseNodes(envVars)
-	testutil.Ok(t, err)
+	env, ok := env.EnvForNetwork(envs, ethereum.MainnetName)
+	testutil.Assert(t, ok, "env for mainnet couldn't be loaded")
 
-	cmd := Fork(log.NewNopLogger(), "npx", "hardhat", "node", "--fork", nodes[0], "--fork-block-number", "13858002")
+	cmd := Fork(log.NewNopLogger(), "npx", "hardhat", "node", "--fork", env.Nodes[0], "--fork-block-number", "13858002")
 	defer testutil.KillCmd(t, cmd)
 
 	client, err := ethclient.DialContext(ctx, DefaultUrl)

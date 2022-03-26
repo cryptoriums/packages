@@ -24,7 +24,7 @@ jobs:
   Testing_and_building:
     runs-on: ubuntu-latest
     env:
-      NODE_URLS: ${{ secrets.NODE_URLS }}
+      env: ${{ secrets.env }}
     steps:
       - uses: actions/checkout@v2
         with:

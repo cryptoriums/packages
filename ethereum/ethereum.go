@@ -7,7 +7,6 @@ import (
 	"bufio"
 	"context"
 	"crypto/ecdsa"
-	"encoding/hex"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -58,8 +57,34 @@ const (
 	ReorgEventWaitSlow = 3 * time.Minute
 	ReorgEventWaitFast = 30 * time.Second
 
-	HardhatNetID = 31337
+	MainnetName = "mainnet"
+	RopstenName = "ropsten"
+	GoerliName  = "goerli"
+	RinkebyName = "rinkeby"
+	HardhatName = "hardhat"
+
+	MainnetID = 1
+	RopstenID = 3
+	GoerliID  = 4
+	RinkebyID = 5
+	HardhatID = 31337
 )
+
+var NetworksByID = map[int64]string{
+	MainnetID: MainnetName,
+	RopstenID: RopstenName,
+	RinkebyID: RinkebyName,
+	GoerliID:  GoerliName,
+	HardhatID: HardhatName,
+}
+
+var NetworksByName = map[string]int64{
+	MainnetName: MainnetID,
+	RopstenName: RopstenID,
+	RinkebyName: RinkebyID,
+	GoerliName:  GoerliID,
+	HardhatName: HardhatID,
+}
 
 var ethAddressRE *regexp.Regexp = regexp.MustCompile("^0x[0-9a-fA-F]{40}$")
 
@@ -101,23 +126,6 @@ func GetAddressForNetwork(addresses string, networkID int64) (string, error) {
 	default:
 		return "", errors.New("unhandled network id")
 	}
-}
-
-func DecodeHex(s string) []byte {
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		panic(err)
-	}
-
-	return b
-}
-
-func Keccak256(input string) [32]byte {
-	hash := crypto.Keccak256([]byte(input))
-	var hashed [32]byte
-	copy(hashed[:], hash)
-
-	return hashed
 }
 
 type Account struct {
@@ -368,7 +376,7 @@ func NewTxOpts(
 	}
 
 	if gasMaxFeeWei == nil {
-		if client.NetworkID() == HardhatNetID {
+		if NetworksByID[client.NetworkID()] == HardhatName {
 			return nil, errors.New("gasMaxFee is required for the hardhat network as it doesn't support the eth_maxPriorityFeePerGas method for getting the current max fee")
 		}
 		gasMaxTip, err := client.SuggestGasTipCap(ctx)
