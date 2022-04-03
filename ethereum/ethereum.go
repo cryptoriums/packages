@@ -288,14 +288,18 @@ func NewSignedTX(
 	value float64,
 ) (*types.Transaction, string, error) {
 
-	abiP, err := abi.JSON(strings.NewReader(abis))
-	if err != nil {
-		return nil, "", errors.Wrap(err, "read contract ABI")
-	}
+	// When just sending ether the data field is empty.
+	data := []byte{}
+	if abis != "" {
+		abiP, err := abi.JSON(strings.NewReader(abis))
+		if err != nil {
+			return nil, "", errors.Wrap(err, "read contract ABI")
+		}
 
-	data, err := abiP.Pack(methodName, args...)
-	if err != nil {
-		return nil, "", errors.Wrap(err, "packing ABI")
+		data, err = abiP.Pack(methodName, args...)
+		if err != nil {
+			return nil, "", errors.Wrap(err, "packing ABI")
+		}
 	}
 
 	if gasMaxFee == 0 {
