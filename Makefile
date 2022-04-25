@@ -111,9 +111,6 @@ update-go-deps: ## Update all golang dependencies.
 	done
 	$(GO) mod tidy
 
-
-##### NON-phony targets
-
 $(BIN_DIR):
 	@mkdir -p $(BIN_DIR)
 
@@ -146,3 +143,7 @@ setup-testing:
 	contraget --path=0xf403c135812408bfbe8713b5a23a04b3d48aae31 --download-dst=testing/contracts/source --network=mainnet --pkg-dst=testing/contracts/bindings --name=booster
 	@sleep 6
 	contraget --path=0x1cEBdB0856dd985fAe9b8fEa2262469360B8a3a6 --download-dst=testing/contracts/source --network=mainnet --pkg-dst=testing/contracts/bindings --name=gauge
+
+.PHONY: contracts/src/ERC20.sol
+contracts/src/ERC20.sol:
+	contraget --path=contracts/src/ERC20.sol --pkg-dst=contracts/bindings/erc20

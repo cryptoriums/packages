@@ -20,23 +20,37 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/console/prompt"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/jinzhu/copier"
 	"github.com/peterh/liner"
 	"github.com/pkg/errors"
 )
 
-type Envs map[string]Env
+type Node struct {
+	URL  string
+	Tags []string
+}
+
+type ApiKey struct {
+	Name  string
+	Value string
+	Tags  []string
+}
 
 type Env struct {
-	Nodes    []string
-	ApiKeys  map[string]string
-	Accounts []Account
+	Nodes       []Node
+	ApiKeys     []ApiKey
+	ApiKeysMap  map[string]string `json:",omitempty"` // [Name]ApiKey
+	Accounts    []Account
+	AccountsMap map[common.Address]Account `json:",omitempty"` // [PubKey]Account
 }
 
 type Account struct {
 	Pub  common.Address
 	Priv string
+	Tags []string
 }
 
 func createHash(key string) (string, error) {
@@ -49,9 +63,30 @@ func createHash(key string) (string, error) {
 
 const EncryptIndicator = "@"
 
+func IsEncryptedEnv(envr Env) bool {
+	for _, acc := range envr.Accounts {
+		if IsEncrypted(acc.Priv) {
+			return true
+		}
+	}
+	for _, key := range envr.ApiKeys {
+		if IsEncrypted(key.Value) {
+			return true
+		}
+	}
+
+	return false
+}
+func IsEncrypted(_input string) bool {
+	if len(_input) == 0 {
+		return false
+	}
+	return _input[0] == EncryptIndicator[0]
+}
+
 func Decrypt(_input string, pass string) (string, error) {
-	if _input[0] != EncryptIndicator[0] {
-		return "", errors.Errorf("input doesn't start with a encryption indicator:%v so probably not encrypted", EncryptIndicator)
+	if !IsEncrypted(_input) {
+		return "", errors.Errorf("input is not encrypted")
 	}
 	input, err := hex.DecodeString(_input[1:])
 	if err != nil {
@@ -79,11 +114,10 @@ func Decrypt(_input string, pass string) (string, error) {
 	return string(decyphered), nil
 }
 
-func Encrypt(_input string, pass string) (string, error) {
-	if _input[0] == EncryptIndicator[0] {
-		return "", errors.Errorf("input already starts with the encryption indicator:%v so probably already encrypted", EncryptIndicator)
+func Encrypt(input string, pass string) (string, error) {
+	if IsEncrypted(input) {
+		return "", errors.Errorf("input is already encrypted")
 	}
-	input := []byte(_input)
 
 	h, err := createHash(pass)
 	if err != nil {
@@ -98,11 +132,16 @@ func Encrypt(_input string, pass string) (string, error) {
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
 		return "", errors.Wrap(err, "read full")
 	}
-	ciphered := gcm.Seal(nonce, nonce, input, nil)
+	ciphered := gcm.Seal(nonce, nonce, []byte(input), nil)
 	return EncryptIndicator + hex.EncodeToString(ciphered), nil
 }
 
 func DecryptEnvWithWebPassword(ctx context.Context, logger log.Logger, header string, env Env, host string, port uint) *Env {
+	if !IsEncryptedEnv(env) {
+		return &env
+	}
+	level.Error(logger).Log("msg", "env is encrypted so use the web server to input the password to decrypt")
+
 	envDecrypted := make(chan *Env)
 	srv := &http.Server{Addr: host + ":" + strconv.Itoa(int(port))}
 	defer func() {
@@ -168,55 +207,215 @@ func DecryptEnvWithWebPassword(ctx context.Context, logger log.Logger, header st
 	return <-envDecrypted
 }
 
-func DecryptEnvWithPasswordLoop(env Env) (Env, error) {
+func ReEncryptEnvWithPasswordLoop(envOrig Env) (Env, string, error) {
 	for {
-		pass, err := prompt.Stdin.PromptPassword("Decrypt Password: ")
+		pass, err := prompt.Stdin.PromptPassword("Decrypt password: ")
 		if err != nil {
 			if err == liner.ErrPromptAborted {
-				return Env{}, err
+				return Env{}, "", err
 			}
 			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("getting password from terminal:", err)
 			continue
 		}
-		env, err = DecryptEnv(env, pass)
+		passNew, err := prompt.Stdin.PromptInput("New encrypt password: ")
+		if err != nil {
+			if err == liner.ErrPromptAborted {
+				return Env{}, "", err
+			}
+			//lint:ignore faillint for prompts can't use logs.
+			fmt.Println("getting password from terminal:", err)
+			continue
+		}
+		env, err := ReEnryptEnv(envOrig, pass, passNew)
 		if err != nil {
 			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("Decrypt error try again:", err)
 			continue
 		}
-		return env, nil
+		return env, passNew, nil
 	}
 }
 
-func DecryptEnv(env Env, pass string) (Env, error) {
-	for i, account := range env.Accounts {
-		decryped, err := Decrypt(account.Priv, pass)
+func DecryptEnvWithPasswordLoop(envOrig Env) (Env, string, error) {
+	for {
+		pass, err := prompt.Stdin.PromptPassword("Decrypt password: ")
+		if err != nil {
+			if err == liner.ErrPromptAborted {
+				return Env{}, "", err
+			}
+			//lint:ignore faillint for prompts can't use logs.
+			fmt.Println("getting password from terminal:", err)
+			continue
+		}
+		env, err := DecryptEnv(envOrig, pass)
+		if err != nil {
+			//lint:ignore faillint for prompts can't use logs.
+			fmt.Println("Decrypt error try again:", err)
+			continue
+		}
+		return env, pass, nil
+	}
+}
+
+func ReEnryptEnv(envOrig Env, pass, passNew string) (Env, error) {
+	if passNew == "" {
+		return Env{}, errors.New("new pass shouldn't be empty")
+	}
+	// Make a copy to not modify the original env as slices and maps are passed by reference.
+	env := &Env{}
+	err := copier.CopyWithOption(env, envOrig, copier.Option{DeepCopy: true})
+	if err != nil {
+		return Env{}, errors.Wrapf(err, "copier.CopyWithOption")
+	}
+
+	for id, account := range env.Accounts {
+		if account.Priv == "" {
+			continue
+		}
+		var decrypted string
+
+		if !IsEncrypted(account.Priv) {
+			_, err := crypto.HexToECDSA(strings.TrimPrefix(account.Priv, "0x"))
+			if err != nil {
+				return Env{}, errors.Wrapf(err, "error parsing unencrypted priv key:%v", account.Priv)
+			}
+			continue
+		}
+
+		var err error
+		decrypted, err = Decrypt(account.Priv, pass)
 		if err != nil {
 			return Env{}, errors.Wrapf(err, "decrypting account:%v", account.Pub)
 		}
-		account.Priv = decryped
-		env.Accounts[i] = account
-	}
 
-	for name, value := range env.ApiKeys {
-		if value[0] == EncryptIndicator[0] {
-			decryped, err := Decrypt(value, pass)
-			if err != nil {
-				return Env{}, errors.Wrapf(err, "decrypting key:%v", name)
-			}
-			env.ApiKeys[name] = decryped
+		encrypted, err := Encrypt(decrypted, passNew)
+		if err != nil {
+			return Env{}, errors.Wrapf(err, "encrypting account:%v", account.Pub)
+		}
+
+		env.Accounts[id] = Account{
+			Priv: encrypted,
+			Pub:  account.Pub,
+			Tags: account.Tags,
 		}
 	}
-	return env, nil
+
+	for id, key := range env.ApiKeys {
+		if IsEncrypted(key.Value) {
+			decrypted, err := Decrypt(key.Value, pass)
+			if err != nil {
+				return Env{}, errors.Wrapf(err, "decrypting key:%v", key.Name)
+			}
+			encrypted, err := Encrypt(decrypted, passNew)
+			if err != nil {
+				return Env{}, errors.Wrapf(err, "encrypting key:%v", key.Name)
+			}
+			env.ApiKeys[id] = ApiKey{
+				Name:  key.Name,
+				Value: encrypted,
+				Tags:  key.Tags,
+			}
+		}
+	}
+	return *env, nil
 }
 
-func EncryptWithPasswordLoop(input string) (string, error) {
+func DecryptEnv(envOrig Env, pass string) (Env, error) {
+	// Make a copy to not modify the original env as slices and maps are passed by reference.
+	env := &Env{}
+	err := copier.CopyWithOption(env, envOrig, copier.Option{DeepCopy: true})
+	if err != nil {
+		return Env{}, errors.Wrapf(err, "copier.CopyWithOption")
+	}
+
+	for id, account := range envOrig.Accounts {
+		if account.Priv == "" {
+			continue
+		}
+		if !IsEncrypted(account.Priv) {
+			_, err := crypto.HexToECDSA(strings.TrimPrefix(account.Priv, "0x"))
+			if err != nil {
+				return Env{}, errors.Wrapf(err, "error parsing unencrypted priv key:%v", account.Priv)
+			}
+			continue
+		}
+		decrypted, err := Decrypt(account.Priv, pass)
+		if err != nil {
+			return Env{}, errors.Wrapf(err, "decrypting account:%v", account.Pub)
+		}
+
+		acc := Account{
+			Priv: decrypted,
+			Pub:  account.Pub,
+			Tags: account.Tags,
+		}
+		env.Accounts[id] = acc
+		env.AccountsMap[acc.Pub] = acc
+	}
+
+	for id, apiKey := range env.ApiKeys {
+		if IsEncrypted(apiKey.Value) {
+			var err error
+			apiKey.Value, err = Decrypt(apiKey.Value, pass)
+			if err != nil {
+				return Env{}, errors.Wrapf(err, "decrypting key:%v", apiKey.Name)
+			}
+			env.ApiKeys[id] = apiKey
+			env.ApiKeysMap[apiKey.Name] = apiKey.Value
+		}
+	}
+	return *env, nil
+}
+
+func EncryptAccounts(accsOrig []Account, pass string) ([]Account, error) {
+	// Slices need to be explicitly copied to not modify the original slice.
+	accs := make([]Account, len(accsOrig))
+	err := copier.CopyWithOption(accs, accsOrig, copier.Option{DeepCopy: true})
+	if err != nil {
+		return nil, errors.Wrapf(err, "copier.CopyWithOption")
+	}
+	for i, account := range accs {
+		if account.Priv == "" {
+			continue
+		}
+		encrypted, err := Encrypt(account.Priv, pass)
+		if err != nil {
+			return nil, errors.Wrapf(err, "encrypting account:%v", account.Pub)
+		}
+		accs[i].Priv = encrypted
+	}
+
+	return accs, nil
+}
+
+func DecryptAccounts(accsOrig []Account, pass string) ([]Account, error) {
+	// Slices need to be explicitly copied to not modify the original slice.
+	accs := make([]Account, len(accsOrig))
+	err := copier.CopyWithOption(accs, accsOrig, copier.Option{DeepCopy: true})
+	if err != nil {
+		return nil, errors.Wrapf(err, "copier.CopyWithOption")
+	}
+	for i, account := range accs {
+		if account.Priv == "" {
+			continue
+		}
+		decrypted, err := Decrypt(account.Priv, pass)
+		if err != nil {
+			return nil, errors.Wrapf(err, "decrypting account:%v", account.Pub)
+		}
+		accs[i].Priv = decrypted
+	}
+
+	return accs, nil
+}
+
+func EncryptWithPasswordLoop(input string) (string, string, error) {
 	for {
-		pass, err := prompt.Stdin.PromptPassword("Encryption Password:")
+		pass, err := prompt.Stdin.PromptPassword("Encryption password:")
 		if err != nil {
 			if err == liner.ErrPromptAborted {
-				return "", err
+				return "", "", err
 			}
 			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("getting password from terminal:", err)
@@ -230,16 +429,16 @@ func EncryptWithPasswordLoop(input string) (string, error) {
 
 		output, err := Encrypt(input, pass)
 		if err != nil {
-			return "", errors.Wrap(err, "encrypt input")
+			return "", "", errors.Wrap(err, "encrypt input")
 		}
 
-		return output, nil
+		return output, pass, nil
 	}
 }
 
 func DecryptWithPasswordLoop(input string) (string, error) {
 	for {
-		pass, err := prompt.Stdin.PromptPassword("Decryption Password: ")
+		pass, err := prompt.Stdin.PromptPassword("Decryption password: ")
 		if err != nil {
 			if err == liner.ErrPromptAborted {
 				return "", err
@@ -256,61 +455,189 @@ func DecryptWithPasswordLoop(input string) (string, error) {
 
 		output, err := Decrypt(input, pass)
 		if err != nil {
-			return "", errors.Wrap(err, "decrypt input")
+			fmt.Println("decrypt input error:", err)
+			continue
 		}
 
 		return output, nil
 	}
 }
 
-func EnvForNetwork(envs Envs, netName string) (Env, bool) {
-	if env, ok := envs[strings.ToLower(netName)]; ok {
-		return env, ok
+func populateMaps(env Env) Env {
+	env.AccountsMap = make(map[common.Address]Account)
+	env.ApiKeysMap = make(map[string]string)
+
+	for _, acc := range env.Accounts {
+		env.AccountsMap[acc.Pub] = acc
 	}
 
-	env, ok := envs[strings.Title(netName)]
-	return env, ok
+	for _, key := range env.ApiKeys {
+		env.ApiKeysMap[key.Name] = key.Value
+	}
+	return env
 }
 
-func LoadFromEnvVarOrFile(envName, envFilePath string) (Envs, error) {
-	envs, errEnvName := LoadFromEnv(envName)
-	if errEnvName == nil {
-		return envs, nil
+func LoadFromEnvVarOrFile(envName, envFilePath string, tags ...string) (Env, error) {
+	env, err1 := LoadFromEnv(envName, tags...)
+	if err1 == nil {
+		return env, nil
 	}
 
-	envs, errEnvFile := LoadFromFile(envFilePath)
-	if errEnvFile == nil {
-		return envs, nil
+	env, err2 := LoadFromFile(envFilePath)
+	if err2 == nil {
+		return env, nil
 	}
-	return nil, errors.Errorf("env not found in envName:%v and envFilePath:%v errEnvName:%v, errEnvFile:%v", envName, envFilePath, errEnvName, errEnvFile)
+	return Env{}, errors.Errorf("env not found in envName:%v and envFilePath:%v errEnvName:%v, errEnvFile:%v", envName, envFilePath, err1, err2)
 }
 
-func LoadFromEnv(envName string) (Envs, error) {
+func LoadFromEnv(envName string, tags ...string) (Env, error) {
 	content := os.Getenv(envName)
 	if content == "" {
-		return nil, errors.New(envName + " is empty")
+		return Env{}, errors.New(envName + " is empty")
 	}
 
-	envs := Envs{}
-	err := json.Unmarshal([]byte(content), &envs)
+	env := Env{}
+	err := json.Unmarshal([]byte(content), &env)
 	if err != nil {
-		return nil, errors.Wrapf(err, "json.Unmarshal the env var:%v", envName)
+		return Env{}, errors.Wrapf(err, "json.Unmarshal the env var:%v", envName)
 	}
 
-	return envs, nil
+	return populateMaps(ApplyFilter(env, tags...)), nil
 }
 
-func LoadFromFile(envFilePath string) (Envs, error) {
+func LoadFromFile(envFilePath string, tags ...string) (Env, error) {
 	content, err := os.ReadFile(envFilePath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "reading the env file:%v", envFilePath)
+		return Env{}, errors.Wrapf(err, "reading the env file:%v", envFilePath)
 	}
 
-	envs := Envs{}
-	err = json.Unmarshal(content, &envs)
+	env := Env{}
+	err = json.Unmarshal(content, &env)
 	if err != nil {
-		return nil, errors.Wrapf(err, "json.Unmarshal the env file:%v", envFilePath)
+		return Env{}, errors.Wrapf(err, "json.Unmarshal the env file:%v", envFilePath)
 	}
 
-	return envs, nil
+	return populateMaps(ApplyFilter(env, tags...)), nil
+}
+
+func ApplyFilter(env Env, tags ...string) Env {
+	var (
+		nodes    []Node
+		accounts []Account
+		apiKeys  []ApiKey
+	)
+
+	for _, acc := range env.Accounts {
+		if Contains(tags, acc.Tags) {
+			accounts = append(accounts, acc)
+		}
+	}
+	env.Accounts = accounts
+
+	for _, node := range env.Nodes {
+		if Contains(tags, node.Tags) {
+			nodes = append(nodes, node)
+		}
+	}
+	env.Nodes = nodes
+
+	for _, key := range env.ApiKeys {
+		if Contains(tags, key.Tags) {
+			apiKeys = append(apiKeys, key)
+		}
+	}
+	env.ApiKeys = apiKeys
+
+	return env
+}
+
+func Contains(tagsA []string, tagsB []string) bool {
+	if len(tagsA) == 0 || len(tagsB) == 0 {
+		return true
+	}
+	for _, tagA := range tagsA {
+		for _, tagB := range tagsB {
+			if strings.ToLower(tagA) == strings.ToLower(tagB) {
+				return true
+			}
+		}
+
+	}
+	return false
+}
+
+type Token struct {
+	Name    string
+	Address map[int64]common.Address // Token addresses for each supported network.
+}
+
+var ETH_TOKEN = TOKENS[0]
+
+var TOKENS = []Token{
+	{
+		"ETH",
+		map[int64]common.Address{
+			1:     {},
+			3:     {},
+			4:     {},
+			5:     {},
+			56:    {},
+			31337: {},
+		},
+	},
+	{
+		"TRB",
+		map[int64]common.Address{
+			1: common.HexToAddress("0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0"),
+			4: common.HexToAddress("0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0"),
+		},
+	},
+}
+
+func SelectAccount(accounts []Account, print bool) (Account, error) {
+	if print {
+		for i, acc := range accounts {
+			noPrivate := ""
+			if acc.Priv == "" {
+				noPrivate = "*no private key"
+			}
+			fmt.Println(strconv.Itoa(i) + " " + acc.Pub.Hex() + " " + strings.Join(acc.Tags, ",") + " " + noPrivate)
+		}
+	}
+	for {
+		accAddr, err := prompt.Stdin.PromptInput("Select account public address:")
+		if err != nil {
+			return Account{}, errors.Wrap(err, "select account prompt")
+		}
+
+		if !common.IsHexAddress(accAddr) {
+			fmt.Println("input not an address:", accAddr)
+		}
+
+		for _, acc := range accounts {
+			if acc.Pub.Hex() == common.HexToAddress(accAddr).Hex() {
+				return acc, nil
+			}
+		}
+
+		fmt.Println("account not found, try again:", accAddr)
+	}
+}
+
+func SelectAccountAndDecrypt(accounts []Account) (Account, error) {
+	account, err := SelectAccount(accounts, true)
+	if err != nil {
+		return Account{}, err
+	}
+	if account.Priv == "" {
+		return Account{}, errors.Errorf("selected account doesn't have a private key:%v", account.Pub)
+	}
+
+	if IsEncrypted(account.Priv) {
+		account.Priv, err = DecryptWithPasswordLoop(account.Priv)
+		if err != nil {
+			return Account{}, errors.Wrap(err, "DecryptWithPasswordLoop")
+		}
+	}
+	return account, nil
 }

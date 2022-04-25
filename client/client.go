@@ -6,7 +6,6 @@ package client
 import (
 	"context"
 	"math/big"
-	"strings"
 	"sync"
 	"time"
 
@@ -45,11 +44,8 @@ type ClientWithRetry struct {
 	head.HeadSubscriber
 }
 
-func NewClientWithRetry(ctx context.Context, logger log.Logger, cfg Config, envVars map[string]string) (ethereum_p.EthClientRpc, error) {
-	nodes, err := ParseNodes(envVars)
-	if err != nil {
-		return nil, err
-	}
+func NewClientWithRetry(ctx context.Context, logger log.Logger, cfg Config, nodes []string) (ethereum_p.EthClientRpc, error) {
+
 	ethClients, rpcClients, netID, err := ethereum_p.NewClients(ctx, logger, nodes)
 	if err != nil {
 		return nil, err
@@ -393,16 +389,4 @@ func (self *ClientWithRetry) HeaderByNumber(ctx context.Context, number *big.Int
 			return result, nil
 		}
 	}
-}
-
-func ParseNodes(envVars map[string]string) ([]string, error) {
-	nodeURLs, ok := envVars[ethereum_p.NodeURLEnvName]
-	if !ok {
-		return nil, errors.Errorf("the %v var is empty", ethereum_p.NodeURLEnvName)
-	}
-	nodes := strings.Split(nodeURLs, ",")
-	if len(nodes) == 0 {
-		return nil, errors.New("the env var doesn't contain any node urls")
-	}
-	return nodes, nil
 }

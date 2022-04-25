@@ -2,3 +2,4 @@ tmp
 env.json
 node_modules
 cache
+.vscode

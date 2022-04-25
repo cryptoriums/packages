@@ -48,7 +48,6 @@ type EthClientRpc interface {
 const (
 	TxGasOverHead      = 21_000
 	PrivateKeysEnvName = "ETH_PRIVATE_KEYS"
-	NodeURLEnvName     = "NODE_URLS"
 	ComponentName      = "ethereum"
 	BlockTime          = float64(15)
 	BlocksPerSecond    = float64(1 / BlockTime)
@@ -96,78 +95,10 @@ func ValidateAddress(address string) error {
 	return nil
 }
 
-// GetAddressForNetwork returns an ethereum address based on ethereum node network id.
-func GetAddressForNetwork(addresses string, networkID int64) (string, error) {
-	// Parse addresses to a map.
-	networkToAddress := make(map[string]string)
-	_addresses := strings.Split(addresses, ",")
-	for _, address := range _addresses {
-		parts := strings.Split(strings.TrimSpace(address), ":")
-		if len(parts) != 2 {
-			return "", errors.New("malformed ethereum <network:address> string")
-		}
-		if err := ValidateAddress(parts[1]); err != nil {
-			return "", err
-		}
-		networkToAddress[parts[0]] = parts[1]
-	}
-
-	switch networkID {
-	case 1:
-		if val, ok := networkToAddress["Mainnet"]; ok {
-			return val, nil
-		}
-		return "", errors.New("address for the Mainnet network not found in the address list")
-	case 4:
-		if val, ok := networkToAddress["Rinkeby"]; ok {
-			return val, nil
-		}
-		return "", errors.New("address for the Rinkeby network not found in the address list")
-	default:
-		return "", errors.New("unhandled network id")
-	}
-}
-
 type Account struct {
+	Name       string
 	PublicKey  common.Address
 	PrivateKey *ecdsa.PrivateKey
-}
-
-func GetAccountByPubAddress(logger log.Logger, pubAddr string, envVars map[string]string) (*Account, error) {
-	accounts, err := GetAccounts(logger, envVars)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting accounts")
-	}
-
-	for i, addr := range accounts {
-		if addr.PublicKey.Hex() == pubAddr {
-			return accounts[i], nil
-		}
-	}
-	return nil, errors.Wrapf(os.ErrNotExist, "account not found:%v", pubAddr)
-}
-
-// GetAccounts returns a slice of Account from private keys in
-// PrivateKeysEnvName environment variable.
-func GetAccounts(logger log.Logger, envVars map[string]string) ([]*Account, error) {
-	_privateKeys, ok := envVars[PrivateKeysEnvName]
-	if !ok {
-		return nil, errors.New("private key env var is missing")
-	}
-	privateKeys := strings.Split(_privateKeys, ",")
-
-	// Create an Account instance per private keys.
-	accounts := make([]*Account, len(privateKeys))
-	for i, pkey := range privateKeys {
-		account, err := AccountFromPrvKey(pkey)
-		if err != nil {
-			return nil, errors.Wrap(err, "creating an account from private key")
-		}
-
-		accounts[i] = account
-		level.Info(logger).Log("msg", "registered account", "addr", account.PublicKey.Hex())
-	}
-	return accounts, nil
 }
 
 func AccountFromPrvKey(pkey string) (*Account, error) {
@@ -366,12 +297,17 @@ func NewTxOpts(
 	client EthClient,
 	account *Account,
 	gasMaxFee float64,
+	gasMaxTip float64,
 	gasLimit uint64,
 ) (*bind.TransactOpts, error) {
 
 	var gasMaxFeeWei *big.Int
+	var gasMaxTipWei *big.Int
 	if gasMaxFee > 0 {
 		gasMaxFeeWei = math_t.FloatToBigIntMul(gasMaxFee, params.GWei)
+	}
+	if gasMaxTip > 0 {
+		gasMaxTipWei = math_t.FloatToBigIntMul(gasMaxTip, params.GWei)
 	}
 
 	nonce, err := client.PendingNonceAt(ctx, account.PublicKey)
@@ -379,13 +315,15 @@ func NewTxOpts(
 		return nil, errors.Wrap(err, "getting pending nonce")
 	}
 
+	if gasMaxTipWei == nil {
+		gasMaxTipWei, err = client.SuggestGasTipCap(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting suggested gas tip")
+		}
+	}
 	if gasMaxFeeWei == nil {
 		if NetworksByID[client.NetworkID()] == HardhatName {
 			return nil, errors.New("gasMaxFee is required for the hardhat network as it doesn't support the eth_maxPriorityFeePerGas method for getting the current max fee")
-		}
-		gasMaxTip, err := client.SuggestGasTipCap(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting suggested gas tip")
 		}
 		header, err := client.HeaderByNumber(ctx, nil)
 		if err != nil {
@@ -396,7 +334,7 @@ func NewTxOpts(
 		// so 25% will allow including the TX in the next 2 blocks if the network load surges.
 		safeMargin := big.NewInt(0).Div(header.BaseFee, big.NewInt(4))
 		baseFee := big.NewInt(0).Add(header.BaseFee, safeMargin)
-		gasMaxFeeWei = big.NewInt(0).Add(baseFee, gasMaxTip)
+		gasMaxFeeWei = big.NewInt(0).Add(baseFee, gasMaxTipWei)
 	}
 
 	ethBalance, err := client.BalanceAt(ctx, account.PublicKey, nil)
@@ -418,7 +356,7 @@ func NewTxOpts(
 	opts.Value = big.NewInt(0)
 
 	opts.GasLimit = gasLimit
-	opts.GasTipCap = gasMaxFeeWei
+	opts.GasTipCap = gasMaxTipWei
 	opts.GasFeeCap = gasMaxFeeWei
 	opts.Context = ctx
 	return opts, nil
@@ -471,4 +409,22 @@ func CompilerVersion(fileName string) (string, error) {
 		}
 	}
 	return "", errors.New("source file doesn't contain compiler version")
+}
+
+func TestSignMessage(pubExp common.Address, priv *ecdsa.PrivateKey) error {
+	msg := crypto.Keccak256([]byte("foo"))
+	sig, err := crypto.Sign(msg, priv)
+	if err != nil {
+		return errors.Wrap(err, "crypto.Sign")
+	}
+	recoveredPub, err := crypto.Ecrecover(msg, sig)
+	if err != nil {
+		return errors.Wrap(err, "crypto.Ecrecover")
+	}
+	_pubKeyAct, _ := crypto.UnmarshalPubkey(recoveredPub)
+	pubKeyAct := crypto.PubkeyToAddress(*_pubKeyAct)
+	if pubExp != pubKeyAct {
+		return errors.Errorf("Address mismatch: want: %x have: %x", pubExp, pubKeyAct)
+	}
+	return nil
 }
