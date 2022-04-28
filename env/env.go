@@ -28,6 +28,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+type Contract struct {
+	common.Address
+	Tags []string
+}
+
 type Node struct {
 	URL  string
 	Tags []string
@@ -40,6 +45,7 @@ type ApiKey struct {
 }
 
 type Env struct {
+	Contracts   []Contract `json:",omitempty"`
 	Nodes       []Node
 	ApiKeys     []ApiKey
 	ApiKeysMap  map[string]string `json:",omitempty"` // [Name]ApiKey
