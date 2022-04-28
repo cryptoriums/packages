@@ -19,6 +19,14 @@ func EnvAccountsToEthAccounts(accs []env.Account) ([]*ethereum_p.Account, error)
 	return ethAccs, nil
 }
 
+func ApiKeysToMap(keys []env.ApiKey) map[string]string {
+	keysMap := make(map[string]string)
+	for _, key := range keys {
+		keysMap[key.Name] = key.Value
+	}
+	return keysMap
+}
+
 func ContractsToAddresses(contracts []env.Contract) []common.Address {
 	var addrses []common.Address
 	for _, contract := range contracts {
@@ -27,7 +35,7 @@ func ContractsToAddresses(contracts []env.Contract) []common.Address {
 	return addrses
 }
 
-func EnvAccountsToEthAccountsMap(accs map[common.Address]env.Account) (map[common.Address]*ethereum_p.Account, error) {
+func EnvAccountsToEthAccountsMap(accs []env.Account) (map[common.Address]*ethereum_p.Account, error) {
 	ethAccs := make(map[common.Address]*ethereum_p.Account)
 	for _, acc := range accs {
 		ethAcc, err := ethereum_p.AccountFromPrvKey(acc.Priv)

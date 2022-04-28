@@ -29,34 +29,32 @@ import (
 )
 
 type Contract struct {
-	common.Address
-	Tags []string
+	Address common.Address
+	Tags    []string `json:",omitempty"`
 }
 
 type Node struct {
 	URL  string
-	Tags []string
+	Tags []string `json:",omitempty"`
 }
 
 type ApiKey struct {
 	Name  string
 	Value string
-	Tags  []string
+	Tags  []string `json:",omitempty"`
 }
 
 type Env struct {
-	Contracts   []Contract `json:",omitempty"`
-	Nodes       []Node
-	ApiKeys     []ApiKey
-	ApiKeysMap  map[string]string `json:",omitempty"` // [Name]ApiKey
-	Accounts    []Account
-	AccountsMap map[common.Address]Account `json:",omitempty"` // [PubKey]Account
+	Contracts []Contract `json:",omitempty"`
+	Nodes     []Node
+	ApiKeys   []ApiKey
+	Accounts  []Account
 }
 
 type Account struct {
 	Pub  common.Address
 	Priv string
-	Tags []string
+	Tags []string `json:",omitempty"`
 }
 
 func createHash(key string) (string, error) {
@@ -269,8 +267,8 @@ func ReEnryptEnv(envOrig Env, pass, passNew string) (Env, error) {
 		return Env{}, errors.New("new pass shouldn't be empty")
 	}
 	// Make a copy to not modify the original env as slices and maps are passed by reference.
-	env := &Env{}
-	err := copier.CopyWithOption(env, envOrig, copier.Option{DeepCopy: true})
+	env := Env{}
+	err := copier.CopyWithOption(&env, envOrig, copier.Option{DeepCopy: true})
 	if err != nil {
 		return Env{}, errors.Wrapf(err, "copier.CopyWithOption")
 	}
@@ -324,13 +322,13 @@ func ReEnryptEnv(envOrig Env, pass, passNew string) (Env, error) {
 			}
 		}
 	}
-	return *env, nil
+	return env, nil
 }
 
 func DecryptEnv(envOrig Env, pass string) (Env, error) {
 	// Make a copy to not modify the original env as slices and maps are passed by reference.
-	env := &Env{}
-	err := copier.CopyWithOption(env, envOrig, copier.Option{DeepCopy: true})
+	env := Env{}
+	err := copier.CopyWithOption(&env, envOrig, copier.Option{DeepCopy: true})
 	if err != nil {
 		return Env{}, errors.Wrapf(err, "copier.CopyWithOption")
 	}
@@ -357,7 +355,6 @@ func DecryptEnv(envOrig Env, pass string) (Env, error) {
 			Tags: account.Tags,
 		}
 		env.Accounts[id] = acc
-		env.AccountsMap[acc.Pub] = acc
 	}
 
 	for id, apiKey := range env.ApiKeys {
@@ -368,16 +365,14 @@ func DecryptEnv(envOrig Env, pass string) (Env, error) {
 				return Env{}, errors.Wrapf(err, "decrypting key:%v", apiKey.Name)
 			}
 			env.ApiKeys[id] = apiKey
-			env.ApiKeysMap[apiKey.Name] = apiKey.Value
 		}
 	}
-	return *env, nil
+	return env, nil
 }
 
 func EncryptAccounts(accsOrig []Account, pass string) ([]Account, error) {
-	// Slices need to be explicitly copied to not modify the original slice.
-	accs := make([]Account, len(accsOrig))
-	err := copier.CopyWithOption(accs, accsOrig, copier.Option{DeepCopy: true})
+	var accs []Account
+	err := copier.CopyWithOption(&accs, accsOrig, copier.Option{DeepCopy: true})
 	if err != nil {
 		return nil, errors.Wrapf(err, "copier.CopyWithOption")
 	}
@@ -396,9 +391,9 @@ func EncryptAccounts(accsOrig []Account, pass string) ([]Account, error) {
 }
 
 func DecryptAccounts(accsOrig []Account, pass string) ([]Account, error) {
-	// Slices need to be explicitly copied to not modify the original slice.
-	accs := make([]Account, len(accsOrig))
-	err := copier.CopyWithOption(accs, accsOrig, copier.Option{DeepCopy: true})
+	// Deep copy to not modify the original slice.
+	accs := []Account{}
+	err := copier.CopyWithOption(&accs, accsOrig, copier.Option{DeepCopy: true})
 	if err != nil {
 		return nil, errors.Wrapf(err, "copier.CopyWithOption")
 	}
@@ -469,27 +464,13 @@ func DecryptWithPasswordLoop(input string) (string, error) {
 	}
 }
 
-func populateMaps(env Env) Env {
-	env.AccountsMap = make(map[common.Address]Account)
-	env.ApiKeysMap = make(map[string]string)
-
-	for _, acc := range env.Accounts {
-		env.AccountsMap[acc.Pub] = acc
-	}
-
-	for _, key := range env.ApiKeys {
-		env.ApiKeysMap[key.Name] = key.Value
-	}
-	return env
-}
-
 func LoadFromEnvVarOrFile(envName, envFilePath string, tags ...string) (Env, error) {
 	env, err1 := LoadFromEnv(envName, tags...)
 	if err1 == nil {
 		return env, nil
 	}
 
-	env, err2 := LoadFromFile(envFilePath)
+	env, err2 := LoadFromFile(envFilePath, tags...)
 	if err2 == nil {
 		return env, nil
 	}
@@ -508,7 +489,7 @@ func LoadFromEnv(envName string, tags ...string) (Env, error) {
 		return Env{}, errors.Wrapf(err, "json.Unmarshal the env var:%v", envName)
 	}
 
-	return populateMaps(ApplyFilter(env, tags...)), nil
+	return ApplyFilter(env, tags...), nil
 }
 
 func LoadFromFile(envFilePath string, tags ...string) (Env, error) {
@@ -523,14 +504,15 @@ func LoadFromFile(envFilePath string, tags ...string) (Env, error) {
 		return Env{}, errors.Wrapf(err, "json.Unmarshal the env file:%v", envFilePath)
 	}
 
-	return populateMaps(ApplyFilter(env, tags...)), nil
+	return ApplyFilter(env, tags...), nil
 }
 
 func ApplyFilter(env Env, tags ...string) Env {
 	var (
-		nodes    []Node
-		accounts []Account
-		apiKeys  []ApiKey
+		nodes     []Node
+		accounts  []Account
+		apiKeys   []ApiKey
+		contracts []Contract
 	)
 
 	for _, acc := range env.Accounts {
@@ -553,6 +535,13 @@ func ApplyFilter(env Env, tags ...string) Env {
 		}
 	}
 	env.ApiKeys = apiKeys
+
+	for _, contract := range env.Contracts {
+		if Contains(tags, contract.Tags) {
+			contracts = append(contracts, contract)
+		}
+	}
+	env.Contracts = contracts
 
 	return env
 }
