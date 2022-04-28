@@ -40,6 +40,11 @@ type EthClient interface {
 	Close()
 }
 
+type NonceChecker interface {
+	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
+	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
+}
+
 type ContextCaller interface {
 	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
 }
@@ -298,9 +303,26 @@ func NewSignedTXLegacy(
 	return hexutil.Encode(dataM), tx, nil
 }
 
+func HasPendingTx(ctx context.Context, checker NonceChecker, address common.Address) (bool, uint64, error) {
+	pending, err := checker.NonceAt(ctx, address, nil)
+	if err != nil {
+		return false, 0, errors.Wrap(err, "running NonceAt")
+	}
+
+	next, err := checker.PendingNonceAt(ctx, address)
+	if err != nil {
+		return false, 0, errors.Wrap(err, "running PendingNonceAt")
+	}
+	if pending != next {
+		return true, pending, nil
+	}
+	return false, next, nil
+}
+
 func NewTxOpts(
 	ctx context.Context,
 	client EthClient,
+	nonce uint64,
 	account *Account,
 	gasMaxFee float64,
 	gasMaxTip float64,
@@ -309,6 +331,7 @@ func NewTxOpts(
 
 	var gasMaxFeeWei *big.Int
 	var gasMaxTipWei *big.Int
+	var err error
 	if gasMaxFee > 0 {
 		gasMaxFeeWei = math_t.FloatToBigIntMul(gasMaxFee, params.GWei)
 	}
@@ -316,9 +339,11 @@ func NewTxOpts(
 		gasMaxTipWei = math_t.FloatToBigIntMul(gasMaxTip, params.GWei)
 	}
 
-	nonce, err := client.PendingNonceAt(ctx, account.PublicKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting pending nonce")
+	if nonce == 0 {
+		nonce, err = client.PendingNonceAt(ctx, account.PublicKey)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting pending nonce")
+		}
 	}
 
 	if gasMaxTipWei == nil {

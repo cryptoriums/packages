@@ -112,6 +112,21 @@ func ReplaceContract(ctx context.Context, nodeURL string, contractPath string, c
 	return nil
 }
 
+func DisableAutoMine(ctx context.Context, nodeURL string) error {
+	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+	if err != nil {
+		return errors.Wrap(err, "creating rpc client")
+	}
+	defer rpcClient.Close()
+
+	err = rpcClient.CallContext(ctx, nil, "evm_setAutomine", false)
+	if err != nil {
+		return errors.Wrap(err, "calling evm_setAutomine")
+	}
+
+	return nil
+}
+
 func Mine(ctx context.Context, nodeURL string) error {
 	rpcClient, err := rpc.DialContext(ctx, nodeURL)
 	if err != nil {

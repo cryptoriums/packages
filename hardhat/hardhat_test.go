@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/cryptoriums/packages/env"
-	"github.com/cryptoriums/packages/ethereum"
 	math_p "github.com/cryptoriums/packages/math"
 	"github.com/cryptoriums/packages/testing/contracts/bindings/booster"
 	"github.com/cryptoriums/packages/testutil"
@@ -23,14 +22,10 @@ import (
 func TestReplaceContract(t *testing.T) {
 	ctx := context.Background()
 
-	envs, err := env.LoadFromEnvVarOrFile("env", "../env.json")
+	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "http")
 	testutil.Ok(t, err)
-	env, ok := env.EnvForNetwork(envs, ethereum.MainnetName)
-	if !ok {
-		t.Fatal("env for mainnet couldn't be loaded")
-	}
 
-	cmd := Fork(log.NewNopLogger(), "npx", "hardhat", "node", "--fork", env.Nodes[0], "--fork-block-number", "13858002")
+	cmd := Fork(log.NewNopLogger(), "npx", "hardhat", "node", "--fork", e.Nodes[0].URL, "--fork-block-number", "13858002")
 	defer testutil.KillCmd(t, cmd)
 
 	err = ReplaceContract(
@@ -57,12 +52,10 @@ func TestReplaceContract(t *testing.T) {
 func TestImpersonateAccount(t *testing.T) {
 	ctx := context.Background()
 
-	envs, err := env.LoadFromEnvVarOrFile("env", "../env.json")
+	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "http")
 	testutil.Ok(t, err)
-	env, ok := env.EnvForNetwork(envs, ethereum.MainnetName)
-	testutil.Assert(t, ok, "env for mainnet couldn't be loaded")
 
-	cmd := Fork(log.NewNopLogger(), "npx", "hardhat", "node", "--fork", env.Nodes[0], "--fork-block-number", "13858002")
+	cmd := Fork(log.NewNopLogger(), "npx", "hardhat", "node", "--fork", e.Nodes[0].URL, "--fork-block-number", "13858002")
 	defer testutil.KillCmd(t, cmd)
 
 	client, err := ethclient.DialContext(ctx, DefaultUrl)
