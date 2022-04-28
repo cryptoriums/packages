@@ -40,9 +40,13 @@ type EthClient interface {
 	Close()
 }
 
+type ContextCaller interface {
+	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
+}
+
 type EthClientRpc interface {
 	EthClient
-	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
+	ContextCaller
 }
 
 const (
@@ -67,6 +71,8 @@ const (
 	GoerliID  = 4
 	RinkebyID = 5
 	HardhatID = 31337
+
+	MaxBlockGasLimit = 30000000
 )
 
 var NetworksByID = map[int64]string{
@@ -177,7 +183,7 @@ func NewClients(ctx context.Context, logger log.Logger, nodeURLs []string) ([]*e
 	return ethClients, rpcClients, lastNetID, nil
 }
 
-func NewClientCachedNetID(ctx context.Context, logger log.Logger, nodeURL string) (EthClient, error) {
+func NewClientCachedNetID(ctx context.Context, logger log.Logger, nodeURL string) (EthClientRpc, error) {
 	ethClient, rpcClient, netID, err := NewClients(ctx, logger, []string{nodeURL})
 	if err != nil {
 		return nil, err
