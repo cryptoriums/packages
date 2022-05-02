@@ -34,15 +34,3 @@ func ContractsToAddresses(contracts []env.Contract) []common.Address {
 	}
 	return addrses
 }
-
-func EnvAccountsToEthAccountsMap(accs []env.Account) (map[common.Address]*ethereum_p.Account, error) {
-	ethAccs := make(map[common.Address]*ethereum_p.Account)
-	for _, acc := range accs {
-		ethAcc, err := ethereum_p.AccountFromPrvKey(acc.Priv)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting private key to ECDSA")
-		}
-		ethAccs[acc.Pub] = ethAcc
-	}
-	return ethAccs, nil
-}

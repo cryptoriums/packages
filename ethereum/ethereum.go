@@ -31,6 +31,7 @@ import (
 )
 
 type EthClient interface {
+	ethereum.PendingStateReader
 	bind.ContractBackend
 	ethereum.ChainStateReader
 	ethereum.ChainReader
@@ -38,11 +39,6 @@ type EthClient interface {
 	NetworkID() int64
 	BlockNumber(ctx context.Context) (uint64, error)
 	Close()
-}
-
-type NonceChecker interface {
-	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
-	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
 }
 
 type ContextCaller interface {
@@ -301,22 +297,6 @@ func NewSignedTXLegacy(
 	}
 
 	return hexutil.Encode(dataM), tx, nil
-}
-
-func HasPendingTx(ctx context.Context, checker NonceChecker, address common.Address) (bool, uint64, error) {
-	pending, err := checker.NonceAt(ctx, address, nil)
-	if err != nil {
-		return false, 0, errors.Wrap(err, "running NonceAt")
-	}
-
-	next, err := checker.PendingNonceAt(ctx, address)
-	if err != nil {
-		return false, 0, errors.Wrap(err, "running PendingNonceAt")
-	}
-	if pending != next {
-		return true, pending, nil
-	}
-	return false, next, nil
 }
 
 func NewTxOpts(
