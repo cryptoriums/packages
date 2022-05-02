@@ -413,7 +413,7 @@ func DecryptAccounts(accsOrig []Account, pass string) ([]Account, error) {
 
 func EncryptWithPasswordLoop(input string) (string, string, error) {
 	for {
-		pass, err := prompt.Stdin.PromptPassword("Encryption password:")
+		pass, err := prompt.Stdin.PromptPassword("Encryption password: ")
 		if err != nil {
 			if err == liner.ErrPromptAborted {
 				return "", "", err
@@ -589,7 +589,7 @@ var TOKENS = []Token{
 	},
 }
 
-func SelectAccount(accounts []Account, print bool) (Account, error) {
+func SelectAccount(accounts []Account, print bool, msg string) (Account, error) {
 	if print {
 		for i, acc := range accounts {
 			noPrivate := ""
@@ -600,7 +600,7 @@ func SelectAccount(accounts []Account, print bool) (Account, error) {
 		}
 	}
 	for {
-		accAddr, err := prompt.Stdin.PromptInput("Select account public address:")
+		accAddr, err := prompt.Stdin.PromptInput(msg + " ")
 		if err != nil {
 			return Account{}, errors.Wrap(err, "select account prompt")
 		}
@@ -619,20 +619,24 @@ func SelectAccount(accounts []Account, print bool) (Account, error) {
 	}
 }
 
-func SelectAccountAndDecrypt(accounts []Account) (Account, error) {
-	account, err := SelectAccount(accounts, true)
-	if err != nil {
-		return Account{}, err
-	}
-	if account.Priv == "" {
-		return Account{}, errors.Errorf("selected account doesn't have a private key:%v", account.Pub)
-	}
-
-	if IsEncrypted(account.Priv) {
-		account.Priv, err = DecryptWithPasswordLoop(account.Priv)
+func SelectAccountAndDecrypt(accounts []Account, print bool, msg string) (Account, error) {
+	for {
+		account, err := SelectAccount(accounts, print, msg)
 		if err != nil {
-			return Account{}, errors.Wrap(err, "DecryptWithPasswordLoop")
+			return Account{}, err
 		}
+		print = false
+		if account.Priv == "" {
+			fmt.Println("selected account doesn't have a private key:", account.Pub)
+			continue
+		}
+
+		if IsEncrypted(account.Priv) {
+			account.Priv, err = DecryptWithPasswordLoop(account.Priv)
+			if err != nil {
+				return Account{}, errors.Wrap(err, "DecryptWithPasswordLoop")
+			}
+		}
+		return account, nil
 	}
-	return account, nil
 }
