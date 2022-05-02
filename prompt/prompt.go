@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cryptoriums/packages/env"
 	"github.com/ethereum/go-ethereum"
@@ -160,5 +161,38 @@ func Int(msg string, min, max int) (int64, error) {
 			continue
 		}
 		return int64(input), nil
+	}
+}
+
+func Duration(msg string, def time.Duration) (time.Duration, error) {
+	for {
+		resp, err := prompt.Stdin.PromptWithSuggestion(msg, def.String(), 0)
+		if err != nil {
+			return 0, err
+		}
+
+		t, err := time.ParseDuration(resp)
+		if err != nil {
+			fmt.Println("input ParseDuration err:", err)
+			continue
+		}
+
+		return t, nil
+	}
+}
+
+func Address(msg string) (common.Address, error) {
+	for {
+		resp, err := prompt.Stdin.PromptInput(msg)
+		if err != nil {
+			return common.Address{}, err
+		}
+
+		if !common.IsHexAddress(resp) {
+			fmt.Println("Input is not a valid address")
+			continue
+		}
+
+		return common.HexToAddress(resp), nil
 	}
 }
