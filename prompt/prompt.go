@@ -21,7 +21,7 @@ import (
 
 func Proxy(contracts []env.Contract) (*common.Address, error) {
 	for i, contract := range contracts {
-		fmt.Println(strconv.Itoa(i) + ":" + contract.Address.Hex() + " " + strings.Join(contract.Tags, ","))
+		fmt.Println(strconv.Itoa(i) + ": " + contract.Address.Hex() + " " + strings.Join(contract.Tags, ","))
 	}
 	for {
 		resp, err := prompt.Stdin.PromptInput("Enter proxy address or leave empty: ")
@@ -181,11 +181,14 @@ func Duration(msg string, def time.Duration) (time.Duration, error) {
 	}
 }
 
-func Address(msg string) (common.Address, error) {
+func Address(msg string, required bool) (*common.Address, error) {
 	for {
 		resp, err := prompt.Stdin.PromptInput(msg)
 		if err != nil {
-			return common.Address{}, err
+			return nil, err
+		}
+		if resp == "" && !required {
+			return nil, nil
 		}
 
 		if !common.IsHexAddress(resp) {
@@ -193,6 +196,7 @@ func Address(msg string) (common.Address, error) {
 			continue
 		}
 
-		return common.HexToAddress(resp), nil
+		addr := common.HexToAddress(resp)
+		return &addr, nil
 	}
 }
