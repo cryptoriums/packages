@@ -8,6 +8,27 @@ import (
 	"math/big"
 )
 
+var (
+	E18 = big.NewInt(1e18)
+	One = big.NewInt(1)
+)
+
+func MulWad(a, b *big.Int) *big.Int {
+	if a.BitLen() == 0 {
+		return a
+	}
+	if b.BitLen() == 0 {
+		return b
+	}
+	c := new(big.Int).Mul(a, b)
+	result := new(big.Int).Div(c, E18)
+
+	if result.BitLen() == 0 {
+		return One
+	}
+	return result
+}
+
 func PercentageDiff(old, new float64) float64 {
 	diff := new - old
 

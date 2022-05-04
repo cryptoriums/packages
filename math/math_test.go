@@ -14,6 +14,79 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
+func TestMulWad(t *testing.T) {
+	type testcase struct {
+		a   *big.Int
+		b   *big.Int
+		exp *big.Int
+	}
+
+	e16, ok := big.NewInt(0).SetString("10000000000000000", 10)
+	testutil.Assert(t, ok)
+	e17, ok := big.NewInt(0).SetString("100000000000000000", 10)
+	testutil.Assert(t, ok)
+	e18, ok := big.NewInt(0).SetString("1000000000000000000", 10)
+	testutil.Assert(t, ok)
+	e19, ok := big.NewInt(0).SetString("10000000000000000000", 10)
+	testutil.Assert(t, ok)
+	e20, ok := big.NewInt(0).SetString("100000000000000000000", 10)
+	testutil.Assert(t, ok)
+	e22, ok := big.NewInt(0).SetString("10000000000000000000000", 10)
+	testutil.Assert(t, ok)
+
+	cases := []testcase{
+		{
+			big.NewInt(0),
+			big.NewInt(1e18),
+			big.NewInt(0),
+		}, {
+			big.NewInt(1e18),
+			big.NewInt(0),
+			big.NewInt(0),
+		},
+		{
+			big.NewInt(1e18),
+			big.NewInt(1),
+			big.NewInt(1),
+		},
+		{
+			big.NewInt(1111111111111111111),
+			big.NewInt(2000000000000000000),
+			big.NewInt(2222222222222222222),
+		},
+		{
+			big.NewInt(1e7),
+			big.NewInt(1e6),
+			big.NewInt(1),
+		},
+		{
+			e17,
+			e17,
+			e16,
+		},
+		{
+			e18,
+			e17,
+			e17,
+		}, {
+			e18,
+			e19,
+			e19,
+		}, {
+			e20,
+			e20,
+			e22,
+		},
+	}
+
+	for i, tc := range cases {
+		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
+			testutil.Equals(t, tc.exp, MulWad(tc.a, tc.b))
+
+		})
+	}
+}
+
 func TestPercentageDiff(t *testing.T) {
 	type testcase struct {
 		old      float64
