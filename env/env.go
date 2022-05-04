@@ -11,7 +11,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
+	"fmt" //lint:ignore faillint for prompts it is better than logs.
 	"io"
 	"net/http"
 	"os"
@@ -218,7 +218,6 @@ func ReEncryptEnvWithPasswordLoop(envOrig Env) (Env, string, error) {
 			if err == liner.ErrPromptAborted {
 				return Env{}, "", err
 			}
-			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("getting password from terminal:", err)
 			continue
 		}
@@ -227,13 +226,11 @@ func ReEncryptEnvWithPasswordLoop(envOrig Env) (Env, string, error) {
 			if err == liner.ErrPromptAborted {
 				return Env{}, "", err
 			}
-			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("getting password from terminal:", err)
 			continue
 		}
 		env, err := ReEnryptEnv(envOrig, pass, passNew)
 		if err != nil {
-			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("Decrypt error try again:", err)
 			continue
 		}
@@ -248,13 +245,11 @@ func DecryptEnvWithPasswordLoop(envOrig Env) (Env, string, error) {
 			if err == liner.ErrPromptAborted {
 				return Env{}, "", err
 			}
-			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("getting password from terminal:", err)
 			continue
 		}
 		env, err := DecryptEnv(envOrig, pass)
 		if err != nil {
-			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("Decrypt error try again:", err)
 			continue
 		}
@@ -418,12 +413,10 @@ func EncryptWithPasswordLoop(input string) (string, string, error) {
 			if err == liner.ErrPromptAborted {
 				return "", "", err
 			}
-			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("getting password from terminal:", err)
 			continue
 		}
 		if pass == "" {
-			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("password can't be empty")
 			continue
 		}
@@ -444,12 +437,10 @@ func DecryptWithPasswordLoop(input string) (string, error) {
 			if err == liner.ErrPromptAborted {
 				return "", err
 			}
-			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("getting password from terminal:", err)
 			continue
 		}
 		if pass == "" {
-			//lint:ignore faillint for prompts can't use logs.
 			fmt.Println("password can't be empty")
 			continue
 		}
@@ -508,6 +499,10 @@ func LoadFromFile(envFilePath string, tags ...string) (Env, error) {
 }
 
 func ApplyFilter(env Env, tags ...string) Env {
+	if len(tags) == 0 || tags[0] == "" {
+		return env
+	}
+
 	var (
 		nodes     []Node
 		accounts  []Account
@@ -552,7 +547,7 @@ func Contains(tagsA []string, tagsB []string) bool {
 	}
 	for _, tagA := range tagsA {
 		for _, tagB := range tagsB {
-			if strings.ToLower(tagA) == strings.ToLower(tagB) {
+			if strings.EqualFold(tagA, tagB) {
 				return true
 			}
 		}

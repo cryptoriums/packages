@@ -5,7 +5,7 @@ package prompt
 
 import (
 	"context"
-	"fmt"
+	"fmt" //lint:ignore faillint for prompts it is better than logs.
 	"io/ioutil"
 	"strconv"
 	"strings"
@@ -77,13 +77,11 @@ func ReadFile() ([]byte, string, error) {
 			if err == liner.ErrPromptAborted {
 				return nil, "", err
 			}
-			//lint:ignore faillint for prompts is better with prints.
 			fmt.Println("getting file path from terminal:", err)
 			continue
 		}
 		content, err := ioutil.ReadFile(filePath)
 		if err != nil {
-			//lint:ignore faillint for prompts is better with prints.
 			fmt.Println(err)
 			continue
 		}
@@ -153,7 +151,7 @@ func Int(msg string, min, max int) (int64, error) {
 		}
 		input, err := strconv.Atoi(_input)
 		if err != nil {
-			fmt.Println("casting input to float err:", err)
+			fmt.Println("casting input to int err:", err)
 			continue
 		}
 		if input < min || input > max {

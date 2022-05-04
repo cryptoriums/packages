@@ -25,6 +25,7 @@ func FuzzEncryptDecrypt(f *testing.F) {
 		testutil.Ok(t, err, input)
 		testutil.Assert(t, IsEncrypted(encr))
 		decr, err := Decrypt(encr, pass)
+		testutil.Ok(t, err, input)
 		testutil.Equals(t, decr, input)
 	})
 }
