@@ -430,12 +430,12 @@ func EncryptWithPasswordLoop(input string) (string, string, error) {
 	}
 }
 
-func DecryptWithPasswordLoop(input string) (string, error) {
+func DecryptWithPasswordLoop(input string) (string, string, error) {
 	for {
 		pass, err := prompt.Stdin.PromptPassword("Decryption password: ")
 		if err != nil {
 			if err == liner.ErrPromptAborted {
-				return "", err
+				return "", "", err
 			}
 			fmt.Println("getting password from terminal:", err)
 			continue
@@ -451,7 +451,7 @@ func DecryptWithPasswordLoop(input string) (string, error) {
 			continue
 		}
 
-		return output, nil
+		return output, pass, nil
 	}
 }
 
@@ -614,11 +614,11 @@ func SelectAccount(accounts []Account, print bool, msg string) (Account, error) 
 	}
 }
 
-func SelectAccountAndDecrypt(accounts []Account, print bool, msg string) (Account, error) {
+func SelectAccountAndDecrypt(accounts []Account, print bool, msg string) (Account, string, error) {
 	for {
 		account, err := SelectAccount(accounts, print, msg)
 		if err != nil {
-			return Account{}, err
+			return Account{}, "", err
 		}
 		print = false
 		if account.Priv == "" {
@@ -626,12 +626,13 @@ func SelectAccountAndDecrypt(accounts []Account, print bool, msg string) (Accoun
 			continue
 		}
 
+		var pass string
 		if IsEncrypted(account.Priv) {
-			account.Priv, err = DecryptWithPasswordLoop(account.Priv)
+			account.Priv, pass, err = DecryptWithPasswordLoop(account.Priv)
 			if err != nil {
-				return Account{}, errors.Wrap(err, "DecryptWithPasswordLoop")
+				return Account{}, "", errors.Wrap(err, "DecryptWithPasswordLoop")
 			}
 		}
-		return account, nil
+		return account, pass, nil
 	}
 }
