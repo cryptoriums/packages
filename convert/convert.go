@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func EnvAccountsToEthAccounts(accs []env.Account) ([]*ethereum_p.Account, error) {
-	var ethAccs []*ethereum_p.Account
+func EnvAccountsToEthAccounts(accs []env.Account) ([]ethereum_p.Account, error) {
+	var ethAccs []ethereum_p.Account
 	for _, acc := range accs {
 		ethAcc, err := ethereum_p.AccountFromPrvKey(acc.Priv)
 		if err != nil {

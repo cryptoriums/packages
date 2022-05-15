@@ -109,21 +109,21 @@ type Account struct {
 	PrivateKey *ecdsa.PrivateKey
 }
 
-func AccountFromPrvKey(pkey string) (*Account, error) {
+func AccountFromPrvKey(pkey string) (Account, error) {
 	pkey = strings.TrimPrefix(pkey, "0x")
 	privateKey, err := crypto.HexToECDSA(strings.TrimSpace(pkey))
 	if err != nil {
-		return nil, errors.Wrap(err, "getting private key to ECDSA")
+		return Account{}, errors.Wrap(err, "getting private key to ECDSA")
 	}
 
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		return nil, errors.New("casting public key to ECDSA")
+		return Account{}, errors.New("casting public key to ECDSA")
 	}
 
 	publicAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-	return &Account{PublicKey: publicAddress, PrivateKey: privateKey}, nil
+	return Account{PublicKey: publicAddress, PrivateKey: privateKey}, nil
 }
 
 func NewClient(ctx context.Context, logger log.Logger, nodeURL string) (EthClient, error) {
@@ -276,7 +276,7 @@ func NewTxOpts(
 	ctx context.Context,
 	client EthClient,
 	nonce uint64,
-	account *Account,
+	account Account,
 	gasMaxFee float64,
 	gasMaxTip float64,
 	gasLimit uint64,
