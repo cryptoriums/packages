@@ -19,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Proxy(contracts []env.Contract, print bool) (*common.Address, error) {
+func Proxy(contracts []env.Contract, print bool) (*common.Address, string, error) {
 	if print {
 		for i, contract := range contracts {
 			fmt.Println(strconv.Itoa(i) + ": " + contract.Address.Hex() + " " + strings.Join(contract.Tags, ","))
@@ -28,11 +28,11 @@ func Proxy(contracts []env.Contract, print bool) (*common.Address, error) {
 	for {
 		resp, err := prompt.Stdin.PromptInput("Enter proxy address or leave empty: ")
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 
 		if resp == "" {
-			return nil, nil
+			return nil, "", nil
 		}
 
 		if !common.IsHexAddress(resp) {
@@ -44,7 +44,7 @@ func Proxy(contracts []env.Contract, print bool) (*common.Address, error) {
 
 		for _, contract := range contracts {
 			if contract.Address.Hex() == selectedProxy.Hex() {
-				return &selectedProxy, nil
+				return &selectedProxy, strings.Join(contract.Tags, ""), nil
 			}
 		}
 		fmt.Println("proxy address not found")
