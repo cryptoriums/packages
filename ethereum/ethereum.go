@@ -74,6 +74,7 @@ const (
 	HardhatID = 31337
 
 	MaxBlockGasLimit = 30000000
+	MaxGasPriceGwei  = 10_000 // To have some failsafe when creating TX and passing WEI instead of GWEI.
 )
 
 var NetworksByID = map[int64]string{
@@ -240,6 +241,10 @@ func NewSignedTX(
 		}
 	}
 
+	if gasMaxFee > MaxGasPriceGwei || gasTip > MaxGasPriceGwei {
+		return nil, "", errors.Errorf("gas fee:%v or gas tip:%v higher than the maximum allowed:%v", gasMaxFee, gasTip, MaxGasPriceGwei)
+	}
+
 	if gasMaxFee == 0 {
 		return nil, "", errors.New("for EIP1559 TXs the gasMaxFee should not be zero")
 	}
@@ -267,38 +272,6 @@ func NewSignedTX(
 	return tx, hexutil.Encode(dataM), nil
 }
 
-func NewSignedTXLegacy(
-	netID int64,
-	data []byte,
-	gasLimit uint64,
-	gasPrice *big.Int,
-	to common.Address,
-	nonce uint64,
-	prvKey *ecdsa.PrivateKey,
-	value float64,
-) (string, *types.Transaction, error) {
-	signer := types.LatestSignerForChainID(big.NewInt(netID))
-
-	tx, err := types.SignNewTx(prvKey, signer, &types.AccessListTx{
-		Gas:      gasLimit,
-		GasPrice: gasPrice,
-		To:       &to,
-		ChainID:  big.NewInt(netID),
-		Nonce:    nonce,
-		Data:     data,
-		Value:    math_t.FloatToBigIntMul(value, params.Ether),
-	})
-	if err != nil {
-		return "", nil, errors.Wrap(err, "sign transaction")
-	}
-	dataM, err := tx.MarshalBinary()
-	if err != nil {
-		return "", nil, errors.Wrap(err, "marshal tx data")
-	}
-
-	return hexutil.Encode(dataM), tx, nil
-}
-
 func NewTxOpts(
 	ctx context.Context,
 	client EthClient,
@@ -317,6 +290,10 @@ func NewTxOpts(
 	}
 	if gasMaxTip > 0 {
 		gasMaxTipWei = math_t.FloatToBigIntMul(gasMaxTip, params.GWei)
+	}
+
+	if gasMaxFee > MaxGasPriceGwei || gasMaxTip > MaxGasPriceGwei {
+		return nil, errors.Errorf("gas fee:%v or gas tip:%v higher than the maximum allowed:%v", gasMaxFee, gasMaxTip, MaxGasPriceGwei)
 	}
 
 	if nonce == 0 {
