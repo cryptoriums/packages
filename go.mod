@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/alecthomas/kong v0.5.1-0.20220518080721-195d56c42e0f
 	github.com/bluele/gcache v0.0.2
-	github.com/cryptoriums/contraget v0.0.0-20220210211402-90d84a92740a
+	github.com/cryptoriums/contraget v0.0.0-20220526162213-01459a7df664
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ethereum/go-ethereum v1.10.19-0.20220526072637-0287e1a7c00c
 	github.com/go-kit/log v0.2.0
@@ -63,4 +63,4 @@ require (
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )
 
-replace github.com/cryptoriums/contraget => ../contraget
+// replace github.com/cryptoriums/contraget => ../contraget
