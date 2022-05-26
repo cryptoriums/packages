@@ -3,11 +3,11 @@ module github.com/cryptoriums/packages
 go 1.18
 
 require (
-	github.com/alecthomas/kong v0.2.22
+	github.com/alecthomas/kong v0.5.1-0.20220518080721-195d56c42e0f
 	github.com/bluele/gcache v0.0.2
 	github.com/cryptoriums/contraget v0.0.0-20220210211402-90d84a92740a
 	github.com/davecgh/go-spew v1.1.1
-	github.com/ethereum/go-ethereum v1.10.18-0.20220520152517-2b0d0ce8b0a0
+	github.com/ethereum/go-ethereum v1.10.19-0.20220526072637-0287e1a7c00c
 	github.com/go-kit/log v0.2.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jinzhu/copier v0.3.5
@@ -24,7 +24,7 @@ require (
 require (
 	github.com/VictoriaMetrics/fastcache v1.9.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btcd/btcec/v2 v2.1.3 // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
