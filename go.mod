@@ -7,7 +7,7 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/cryptoriums/contraget v0.0.0-20220210211402-90d84a92740a
 	github.com/davecgh/go-spew v1.1.1
-	github.com/ethereum/go-ethereum v1.10.16
+	github.com/ethereum/go-ethereum v1.10.18-0.20220520152517-2b0d0ce8b0a0
 	github.com/go-kit/log v0.2.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jinzhu/copier v0.3.5
@@ -24,9 +24,10 @@ require (
 require (
 	github.com/VictoriaMetrics/fastcache v1.9.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btcd v0.22.0-beta // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.1.3 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
