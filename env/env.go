@@ -140,13 +140,13 @@ func Encrypt(input string, pass string) (string, error) {
 	return EncryptIndicator + hex.EncodeToString(ciphered), nil
 }
 
-func DecryptEnvWithWebPassword(ctx context.Context, logger log.Logger, header string, env Env, host string, port uint) *Env {
+func DecryptEnvWithWebPassword(ctx context.Context, logger log.Logger, header string, env Env, host string, port uint) (Env, string) {
 	if !IsEncryptedEnv(env) {
-		return &env
+		return env, ""
 	}
-	level.Error(logger).Log("msg", "env is encrypted so use the web server to input the password to decrypt")
+	level.Info(logger).Log("msg", "env is encrypted so use the web server to input the password to decrypt")
 
-	envDecrypted := make(chan *Env)
+	envDecrypted := make(chan Env)
 	srv := &http.Server{Addr: host + ":" + strconv.Itoa(int(port))}
 	defer func() {
 		if err := srv.Shutdown(ctx); err != nil {
@@ -156,11 +156,10 @@ func DecryptEnvWithWebPassword(ctx context.Context, logger log.Logger, header st
 
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			level.Error(logger).Log("msg", "starting the password web server", "err", err)
-			envDecrypted <- nil
+			panic(fmt.Sprint("starting the password web server", err))
 		}
 	}()
-
+	var pass string
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		postResult := ""
 		if r.Method == "POST" {
@@ -169,12 +168,12 @@ func DecryptEnvWithWebPassword(ctx context.Context, logger log.Logger, header st
 				http.Error(w, fmt.Sprintf("parsing form data:%v", err), http.StatusInternalServerError)
 				return
 			}
-			pass := r.PostForm.Get("decryptPass")
+			pass = r.PostForm.Get("decryptPass")
 
 			env, err := DecryptEnv(env, pass)
 			if err == nil {
 				fmt.Fprintf(w, `Env decrypted, execution will continue!`)
-				envDecrypted <- &env
+				envDecrypted <- env
 				return
 			}
 			postResult = err.Error()
@@ -208,7 +207,7 @@ func DecryptEnvWithWebPassword(ctx context.Context, logger log.Logger, header st
 
 	})
 
-	return <-envDecrypted
+	return <-envDecrypted, pass
 }
 
 func ReEncryptEnvWithPasswordLoop(envOrig Env) (Env, string, error) {
