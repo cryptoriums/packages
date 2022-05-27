@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	contraget "github.com/cryptoriums/contraget/pkg/cli"
+	"github.com/cryptoriums/packages/compiler"
 	ethereum_p "github.com/cryptoriums/packages/ethereum"
 	"github.com/cryptoriums/packages/logging"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -101,17 +101,42 @@ func ReplaceContract(ctx context.Context, nodeURL string, contractPath string, c
 	}
 	defer rpcClient.Close()
 
-	cfg := &contraget.Cli{
-		Path:        contractPath,
-		ObjectsDst:  "tmp",
-		DownloadDst: "tmp",
+	objectsDst := "tmp"
+
+	var filePaths map[string]string
+	_, err = os.Stat(contractPath)
+	if err != nil {
+		return errors.Wrap(err, "getting contract file stats")
+
 	}
 
-	if err := contraget.Run(cfg); err != nil {
-		return errors.Wrap(err, "generating the contract bin file")
+	compilerVer, err := compiler.CompilerVersion(contractPath)
+	if err != nil {
+		return errors.Wrap(err, "get contracts compiler version")
 	}
 
-	_bin, err := os.ReadFile(path.Join(cfg.ObjectsDst, contractName+".bin"))
+	if compilerVer[0:1] != "v" {
+		compilerVer = "v" + compilerVer
+	}
+	filePaths = map[string]string{
+		contractPath: compilerVer,
+	}
+
+	types, abis, bins, _, _, err := compiler.GetContractObjects(filePaths, nil)
+	if err != nil {
+		return errors.Wrap(err, "get contracts object")
+	}
+	err = compiler.ExportABI(objectsDst, abis)
+	if err != nil {
+		return errors.Wrap(err, "Export ABI")
+	}
+
+	err = compiler.ExportBin(objectsDst, types, bins)
+	if err != nil {
+		return errors.Wrap(err, "Export Bins")
+	}
+
+	_bin, err := os.ReadFile(path.Join(objectsDst, contractName+".bin"))
 	if err != nil {
 		return errors.Wrap(err, "reading the bin file")
 	}

@@ -5,12 +5,12 @@ go 1.18
 require (
 	github.com/alecthomas/kong v0.5.1-0.20220518080721-195d56c42e0f
 	github.com/bluele/gcache v0.0.2
-	github.com/cryptoriums/contraget v0.0.0-20220526162213-01459a7df664
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ethereum/go-ethereum v1.10.19-0.20220526072637-0287e1a7c00c
 	github.com/go-kit/log v0.2.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jinzhu/copier v0.3.5
+	github.com/nanmu42/etherscan-api v1.6.0
 	github.com/peterh/liner v1.1.1-0.20190123174540-a2c9a5303de7
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
@@ -18,6 +18,7 @@ require (
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/prometheus v1.8.2-0.20220223151335-4b195fa080db
 	go.uber.org/goleak v1.1.12
+	go.uber.org/multierr v1.7.0
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 )
 
@@ -43,7 +44,6 @@ require (
 	github.com/holiman/uint256 v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
-	github.com/nanmu42/etherscan-api v1.6.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
@@ -56,7 +56,6 @@ require (
 	github.com/tklauser/numcpus v0.4.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292 // indirect
 	golang.org/x/sys v0.0.0-20220223155357-96fed51e1446 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect

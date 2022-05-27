@@ -4,12 +4,9 @@
 package ethereum
 
 import (
-	"bufio"
 	"context"
 	"crypto/ecdsa"
 	"math/big"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -369,34 +366,6 @@ type SendTransactionOpts struct {
 	Value    string         `json:"value,omitempty"`    // (optional) Integer of the value sent with this transaction,
 	Data     string         `json:"data"`               // The compiled code of a contract OR the hash of the invoked method signature and encoded parameters.
 	Nonce    string         `json:"nonce,omitempty"`    // (optional) Integer of a nonce. This allows to overwrite your own pending transactions that use the same nonce.
-}
-
-func CompilerVersion(fileName string) (string, error) {
-	f, err := os.Open(fileName)
-	if err != nil {
-		return "", errors.Wrap(err, "opening the source file")
-	}
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		switch ext := filepath.Ext(fileName); ext {
-		case ".sol":
-			if strings.Contains(line, "pragma solidity") {
-				idxStart := strings.Index(line, "0")
-				idxEnd := strings.Index(line, ";")
-				return "v" + line[idxStart:idxEnd], nil
-			}
-		case ".vy":
-			if strings.Contains(line, "@version") {
-				idxStart := strings.Index(line, "0")
-				return "v" + line[idxStart:], nil
-			}
-		default:
-			return "", errors.Errorf("unsupported file extension:%v", ext)
-		}
-	}
-	return "", errors.New("source file doesn't contain compiler version")
 }
 
 func TestSignMessage(pubExp common.Address, priv *ecdsa.PrivateKey) error {

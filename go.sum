@@ -315,9 +315,6 @@ github.com/cpuguy83/go-md2man/v2 v2.0.0/go.mod h1:maD7wRr/U5Z6m/iR4s+kqSMx2CaBsr
 github.com/creack/pty v1.1.7/go.mod h1:lj5s0c3V2DBrqTV7llrYr5NG6My20zk30Fl46Y7DoTY=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/creack/pty v1.1.11/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
-github.com/cryptoriums/contraget v0.0.0-20220526162213-01459a7df664 h1:pfeKF++qYRjaC/Kkp/lqLG+BXeg9ddjpBUc9J+64hU8=
-github.com/cryptoriums/contraget v0.0.0-20220526162213-01459a7df664/go.mod h1:d6JI5/v+/8DQAy6wxTb4HvJaVStHd9Sw3aSGuySz/SM=
-github.com/cryptoriums/packages v0.0.0-20220526162121-24642be2e43b/go.mod h1:/Zhlmwyqi3P8t7Cuzd4Z6cvsCb/Am4rOpAKuELT9CnQ=
 github.com/cyberdelia/templates v0.0.0-20141128023046-ca7fffd4298c/go.mod h1:GyV+0YP4qX0UQ7r2MoYZ+AvYDp12OF5yg4q8rGnyNh4=
 github.com/cyphar/filepath-securejoin v0.2.2/go.mod h1:FpkQEhXnPnOthhzymB7CGsFk2G9VLXONKD9G7QGMM+4=
 github.com/d2g/dhcp4 v0.0.0-20170904100407-a1d1b6c41b1c/go.mod h1:Ct2BUK8SB0YC1SMSibvLzxjeJLnrYEVLULFNiHY9YfQ=
