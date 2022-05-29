@@ -1,7 +1,7 @@
 // Code generated - DO NOT EDIT.
 // This file is a generated binding and any manual changes will be lost.
 
-package erc20
+package common
 
 import (
 	"errors"
@@ -653,4 +653,183 @@ func (_IERC20 *IERC20Filterer) ParseTransfer(log types.Log) (*IERC20Transfer, er
 	}
 	event.Raw = log
 	return event, nil
+}
+
+// OwneableMetaData contains all meta data concerning the Owneable contract.
+var OwneableMetaData = &bind.MetaData{
+	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_newOwner\",\"type\":\"address\"}],\"name\":\"setOwner\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	Sigs: map[string]string{
+		"13af4035": "setOwner(address)",
+	},
+}
+
+// OwneableABI is the input ABI used to generate the binding from.
+// Deprecated: Use OwneableMetaData.ABI instead.
+var OwneableABI = OwneableMetaData.ABI
+
+// Deprecated: Use OwneableMetaData.Sigs instead.
+// OwneableFuncSigs maps the 4-byte function signature to its string representation.
+var OwneableFuncSigs = OwneableMetaData.Sigs
+
+// Owneable is an auto generated Go binding around an Ethereum contract.
+type Owneable struct {
+	OwneableCaller     // Read-only binding to the contract
+	OwneableTransactor // Write-only binding to the contract
+	OwneableFilterer   // Log filterer for contract events
+}
+
+// OwneableCaller is an auto generated read-only Go binding around an Ethereum contract.
+type OwneableCaller struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// OwneableTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type OwneableTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// OwneableFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type OwneableFilterer struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// OwneableSession is an auto generated Go binding around an Ethereum contract,
+// with pre-set call and transact options.
+type OwneableSession struct {
+	Contract     *Owneable         // Generic contract binding to set the session for
+	CallOpts     bind.CallOpts     // Call options to use throughout this session
+	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
+}
+
+// OwneableCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// with pre-set call options.
+type OwneableCallerSession struct {
+	Contract *OwneableCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts   // Call options to use throughout this session
+}
+
+// OwneableTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// with pre-set transact options.
+type OwneableTransactorSession struct {
+	Contract     *OwneableTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts   // Transaction auth options to use throughout this session
+}
+
+// OwneableRaw is an auto generated low-level Go binding around an Ethereum contract.
+type OwneableRaw struct {
+	Contract *Owneable // Generic contract binding to access the raw methods on
+}
+
+// OwneableCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type OwneableCallerRaw struct {
+	Contract *OwneableCaller // Generic read-only contract binding to access the raw methods on
+}
+
+// OwneableTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type OwneableTransactorRaw struct {
+	Contract *OwneableTransactor // Generic write-only contract binding to access the raw methods on
+}
+
+// NewOwneable creates a new instance of Owneable, bound to a specific deployed contract.
+func NewOwneable(address common.Address, backend bind.ContractBackend) (*Owneable, error) {
+	contract, err := bindOwneable(address, backend, backend, backend)
+	if err != nil {
+		return nil, err
+	}
+	return &Owneable{OwneableCaller: OwneableCaller{contract: contract}, OwneableTransactor: OwneableTransactor{contract: contract}, OwneableFilterer: OwneableFilterer{contract: contract}}, nil
+}
+
+// NewOwneableCaller creates a new read-only instance of Owneable, bound to a specific deployed contract.
+func NewOwneableCaller(address common.Address, caller bind.ContractCaller) (*OwneableCaller, error) {
+	contract, err := bindOwneable(address, caller, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &OwneableCaller{contract: contract}, nil
+}
+
+// NewOwneableTransactor creates a new write-only instance of Owneable, bound to a specific deployed contract.
+func NewOwneableTransactor(address common.Address, transactor bind.ContractTransactor) (*OwneableTransactor, error) {
+	contract, err := bindOwneable(address, nil, transactor, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &OwneableTransactor{contract: contract}, nil
+}
+
+// NewOwneableFilterer creates a new log filterer instance of Owneable, bound to a specific deployed contract.
+func NewOwneableFilterer(address common.Address, filterer bind.ContractFilterer) (*OwneableFilterer, error) {
+	contract, err := bindOwneable(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &OwneableFilterer{contract: contract}, nil
+}
+
+// bindOwneable binds a generic wrapper to an already deployed contract.
+func bindOwneable(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := abi.JSON(strings.NewReader(OwneableABI))
+	if err != nil {
+		return nil, err
+	}
+	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_Owneable *OwneableRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _Owneable.Contract.OwneableCaller.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_Owneable *OwneableRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Owneable.Contract.OwneableTransactor.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_Owneable *OwneableRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _Owneable.Contract.OwneableTransactor.contract.Transact(opts, method, params...)
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_Owneable *OwneableCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _Owneable.Contract.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_Owneable *OwneableTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Owneable.Contract.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_Owneable *OwneableTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _Owneable.Contract.contract.Transact(opts, method, params...)
+}
+
+// SetOwner is a paid mutator transaction binding the contract method 0x13af4035.
+//
+// Solidity: function setOwner(address _newOwner) returns()
+func (_Owneable *OwneableTransactor) SetOwner(opts *bind.TransactOpts, _newOwner common.Address) (*types.Transaction, error) {
+	return _Owneable.contract.Transact(opts, "setOwner", _newOwner)
+}
+
+// SetOwner is a paid mutator transaction binding the contract method 0x13af4035.
+//
+// Solidity: function setOwner(address _newOwner) returns()
+func (_Owneable *OwneableSession) SetOwner(_newOwner common.Address) (*types.Transaction, error) {
+	return _Owneable.Contract.SetOwner(&_Owneable.TransactOpts, _newOwner)
+}
+
+// SetOwner is a paid mutator transaction binding the contract method 0x13af4035.
+//
+// Solidity: function setOwner(address _newOwner) returns()
+func (_Owneable *OwneableTransactorSession) SetOwner(_newOwner common.Address) (*types.Transaction, error) {
+	return _Owneable.Contract.SetOwner(&_Owneable.TransactOpts, _newOwner)
 }
