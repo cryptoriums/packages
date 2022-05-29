@@ -19,19 +19,23 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Proxy(contracts []env.Contract, print bool) (*common.Address, string, error) {
+func Contract(contracts []env.Contract, print bool, allowEmpty bool) (*common.Address, string, error) {
+	msg := "Enter contract address: "
+	if allowEmpty {
+		msg = "Enter contract address or leave empty: "
+	}
 	if print {
 		for i, contract := range contracts {
 			fmt.Println(strconv.Itoa(i) + ": " + contract.Address.Hex() + " " + strings.Join(contract.Tags, ","))
 		}
 	}
 	for {
-		resp, err := prompt.Stdin.PromptInput("Enter proxy address or leave empty: ")
+		resp, err := prompt.Stdin.PromptInput(msg)
 		if err != nil {
 			return nil, "", err
 		}
 
-		if resp == "" {
+		if allowEmpty && resp == "" {
 			return nil, "", nil
 		}
 
