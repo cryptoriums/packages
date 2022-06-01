@@ -205,7 +205,7 @@ func SetNextBlockTimestamp(ctx context.Context, nodeURL string, ts int64) error 
 	return nil
 }
 
-func TxWithImpersonateAccount(ctx context.Context, nodeURL string, from common.Address, to common.Address, abiJ string, funcName string, args []interface{}) (string, error) {
+func TxWithImpersonateAccount(ctx context.Context, nodeURL string, from common.Address, to common.Address, abiJ string, funcName string, args ...interface{}) (string, error) {
 	rpcClient, err := rpc.DialContext(ctx, nodeURL)
 	if err != nil {
 		return "", errors.Wrap(err, "creating rpc client")

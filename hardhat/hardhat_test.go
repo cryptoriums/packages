@@ -83,9 +83,7 @@ func TestImpersonateAccount(t *testing.T) {
 		to,
 		booster.BoosterABI,
 		"setFeeManager",
-		[]interface{}{
-			newAddr,
-		},
+		newAddr,
 	)
 	testutil.Ok(t, err)
 
