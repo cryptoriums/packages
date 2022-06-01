@@ -62,11 +62,11 @@ func (self *LogFiltererWithRedundancy) FilterLogs(ctx context.Context, query eth
 
 	var logsDeduped []types.Log
 	for i, log := range biggestArray {
-		if IsCached(self.logger, cacheStore, log) {
+		if IsCachedForDedup(self.logger, cacheStore, log) {
 			continue
 		}
 		logsDeduped = append(logsDeduped, log)
-		err := Cache(self.logger, cacheStore, log)
+		err := CacheForDedup(self.logger, cacheStore, log)
 		if err != nil {
 			level.Error(self.logger).Log("msg", "caching log entry", "err", err)
 		}
@@ -75,11 +75,11 @@ func (self *LogFiltererWithRedundancy) FilterLogs(ctx context.Context, query eth
 			if len(logs) < i+1 {
 				continue
 			}
-			if IsCached(self.logger, cacheStore, logs[i]) {
+			if IsCachedForDedup(self.logger, cacheStore, logs[i]) {
 				continue
 			}
 			logsDeduped = append(logsDeduped, logs[i])
-			err := Cache(self.logger, cacheStore, logs[i])
+			err := CacheForDedup(self.logger, cacheStore, logs[i])
 			if err != nil {
 				level.Error(self.logger).Log("msg", "setting Cache", "err", err)
 			}
@@ -88,8 +88,8 @@ func (self *LogFiltererWithRedundancy) FilterLogs(ctx context.Context, query eth
 	return logsDeduped, nil
 }
 
-func IsCached(logger log.Logger, cache gcache.Cache, log types.Log) bool {
-	hash := HashFromFields(log)
+func IsCachedForDedup(logger log.Logger, cache gcache.Cache, log types.Log) bool {
+	hash := HashForDedup(log)
 	_, err := cache.Get(hash)
 
 	if err != gcache.KeyNotFoundError {
@@ -99,8 +99,25 @@ func IsCached(logger log.Logger, cache gcache.Cache, log types.Log) bool {
 	return false
 }
 
-func Cache(logger log.Logger, cache gcache.Cache, log types.Log) error {
-	hash := HashFromFields(log)
+func IsCachedForReorg(logger log.Logger, cache gcache.Cache, log types.Log) bool {
+	hash := HashForReorg(log)
+	_, err := cache.Get(hash)
+
+	if err != gcache.KeyNotFoundError {
+		level.Debug(logger).Log("msg", "log is cached", "hash", hash, "err", err)
+		return true
+	}
+	return false
+}
+
+func CacheForReorg(logger log.Logger, cache gcache.Cache, log types.Log) error {
+	hash := HashForReorg(log)
+	level.Debug(logger).Log("msg", "caching log", "hash", hash)
+	return cache.Set(hash, true)
+}
+
+func CacheForDedup(logger log.Logger, cache gcache.Cache, log types.Log) error {
+	hash := HashForDedup(log)
 	level.Debug(logger).Log("msg", "caching log", "hash", hash)
 	return cache.Set(hash, true)
 }
@@ -149,7 +166,7 @@ func NewMultiSubscription(
 		for {
 			select {
 			case log := <-chSrc:
-				if IsCached(logger, sub.cacheStore, log) {
+				if IsCachedForDedup(logger, sub.cacheStore, log) {
 					continue
 				}
 				select {
@@ -157,7 +174,7 @@ func NewMultiSubscription(
 					return
 				case chDst <- log:
 					level.Debug(logger).Log("msg", "event sent", "log", log.TxHash)
-					err := Cache(logger, sub.cacheStore, log)
+					err := CacheForDedup(logger, sub.cacheStore, log)
 					if err != nil {
 						level.Error(logger).Log("msg", "setting cache", "err", err)
 					}
@@ -204,7 +221,15 @@ func (self *MultiSubscription) Err() <-chan error {
 	return self.errDst
 }
 
-func HashFromFields(log types.Log) string {
+func HashForReorg(log types.Log) string {
+	topicStr := ""
+	for _, topic := range log.Topics {
+		topicStr += topic.Hex() + ","
+	}
+	return "TxHash:" + log.TxHash.Hex() + "-Topics:" + topicStr
+}
+
+func HashForDedup(log types.Log) string {
 	topicStr := ""
 	for _, topic := range log.Topics {
 		topicStr += topic.Hex() + ","

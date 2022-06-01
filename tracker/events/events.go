@@ -178,12 +178,12 @@ func (self *TrackerEvents) sendHistoricalLogs() error {
 		return errors.Wrap(err, "getting historical logs")
 	}
 	for _, log := range logs {
-		if events.IsCached(self.logger, self.cacheSentTXs, log) {
-			level.Info(self.logger).Log("msg", "skipping event that has already been sent", "id", events.HashFromFields(log))
+		if events.IsCachedForReorg(self.logger, self.cacheSentTXs, log) {
+			level.Info(self.logger).Log("msg", "skipping event that has already been sent", "id", events.HashForReorg(log))
 			continue
 		}
 
-		if err := events.Cache(self.logger, self.cacheSentTXs, log); err != nil {
+		if err := events.CacheForReorg(self.logger, self.cacheSentTXs, log); err != nil {
 			level.Error(self.logger).Log("msg", "adding tx event cache", "err", err)
 		}
 
@@ -205,7 +205,7 @@ func (self *TrackerEvents) listen(ctx context.Context, src chan types.Log) {
 			level.Info(self.logger).Log("msg", "subscription listener canceled")
 			return
 		case event := <-src:
-			hash := events.HashFromFields(event)
+			hash := events.HashForReorg(event)
 			level.Debug(self.logger).Log("msg", "new event received", "hash", hash)
 
 			if event.Removed {
@@ -230,11 +230,11 @@ func (self *TrackerEvents) listen(ctx context.Context, src chan types.Log) {
 				}
 				// With short reorg wait it is possible to try and send the same TX twice so this check mitigates that.
 
-				if events.IsCached(self.logger, self.cacheSentTXs, event) {
+				if events.IsCachedForReorg(self.logger, self.cacheSentTXs, event) {
 					level.Info(self.logger).Log("msg", "skipping event that has already been sent", "id", hash)
 					return
 				}
-				if err := events.Cache(self.logger, self.cacheSentTXs, event); err != nil {
+				if err := events.CacheForReorg(self.logger, self.cacheSentTXs, event); err != nil {
 					level.Error(self.logger).Log("msg", "adding tx event cache", "err", err)
 				}
 
