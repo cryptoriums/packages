@@ -38,6 +38,12 @@ func MulWad(a, b *big.Int) *big.Int {
 	c := new(big.Int).Mul(a, b)
 	result := new(big.Int).Div(c, E18)
 
+	// For really small devisions passing the e18 boundary
+	// still need to return the smallest number.
+	// For example the result ofdividing 1e17 by 1e18 is 0.1
+	// but since big int can't represent floats this will return 0.
+	// That is why in such deivisions we round up to 1
+	// which represents 0.00..(18 zeros)..01
 	if result.BitLen() == 0 {
 		return One
 	}
