@@ -8,8 +8,8 @@ import (
 	"math/big"
 	"testing"
 
+	big_p "github.com/cryptoriums/packages/big"
 	"github.com/cryptoriums/packages/env"
-	math_p "github.com/cryptoriums/packages/math"
 	"github.com/cryptoriums/packages/testing/contracts/bindings/booster"
 	"github.com/cryptoriums/packages/testutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -67,7 +67,7 @@ func TestImpersonateAccount(t *testing.T) {
 
 	// Set some balance of the account which will run the impersonated TX.
 	{
-		newBalance := math_p.FloatToBigIntMul(1000, params.Ether)
+		newBalance := big_p.FloatToBigIntMul(1000, params.Ether)
 		err = SetBalance(ctx, DefaultUrl, from, newBalance)
 		testutil.Ok(t, err)
 

@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 
+	ethereum_p "github.com/cryptoriums/packages/ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/console/prompt"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -634,4 +635,32 @@ func SelectAccountAndDecrypt(accounts []Account, print bool, msg string) (Accoun
 		}
 		return account, pass, nil
 	}
+}
+
+func EnvAccountsToEthAccounts(accs []Account) ([]ethereum_p.Account, error) {
+	var ethAccs []ethereum_p.Account
+	for _, acc := range accs {
+		ethAcc, err := ethereum_p.AccountFromPrvKey(acc.Priv)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting private key to ECDSA")
+		}
+		ethAccs = append(ethAccs, ethAcc)
+	}
+	return ethAccs, nil
+}
+
+func ApiKeysToMap(keys []ApiKey) map[string]string {
+	keysMap := make(map[string]string)
+	for _, key := range keys {
+		keysMap[key.Name] = key.Value
+	}
+	return keysMap
+}
+
+func ContractsToAddresses(contracts []Contract) []common.Address {
+	var addrses []common.Address
+	for _, contract := range contracts {
+		addrses = append(addrses, contract.Address)
+	}
+	return addrses
 }

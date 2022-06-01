@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	math_t "github.com/cryptoriums/packages/math"
+	big_p "github.com/cryptoriums/packages/big"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -251,12 +251,12 @@ func NewSignedTX(
 	tx, err := types.SignNewTx(prvKey, signer, &types.DynamicFeeTx{
 		ChainID:   big.NewInt(netID),
 		Nonce:     nonce,
-		GasFeeCap: math_t.FloatToBigIntMul(gasMaxFee, params.GWei),
-		GasTipCap: math_t.FloatToBigIntMul(gasTip, params.GWei),
+		GasFeeCap: big_p.FloatToBigIntMul(gasMaxFee, params.GWei),
+		GasTipCap: big_p.FloatToBigIntMul(gasTip, params.GWei),
 		Gas:       gasLimit,
 		To:        &to,
 		Data:      data,
-		Value:     math_t.FloatToBigIntMul(value, params.Ether),
+		Value:     big_p.FloatToBigIntMul(value, params.Ether),
 	})
 	if err != nil {
 		return nil, "", errors.Wrap(err, "sign transaction")
@@ -283,10 +283,10 @@ func NewTxOpts(
 	var gasMaxTipWei *big.Int
 	var err error
 	if gasMaxFee > 0 {
-		gasMaxFeeWei = math_t.FloatToBigIntMul(gasMaxFee, params.GWei)
+		gasMaxFeeWei = big_p.FloatToBigIntMul(gasMaxFee, params.GWei)
 	}
 	if gasMaxTip > 0 {
-		gasMaxTipWei = math_t.FloatToBigIntMul(gasMaxTip, params.GWei)
+		gasMaxTipWei = big_p.FloatToBigIntMul(gasMaxTip, params.GWei)
 	}
 
 	if gasMaxFee > MaxGasPriceGwei || gasMaxTip > MaxGasPriceGwei {
