@@ -144,6 +144,6 @@ setup-testing:
 	@sleep 6
 	contraget --path=0x1cEBdB0856dd985fAe9b8fEa2262469360B8a3a6 --download-dst=testing/contracts/source --network=mainnet --pkg-dst=testing/contracts/bindings --name=gauge
 
-.PHONY: contracts/src/common.sol
-contracts/src/common.sol:
-	contraget --path=contracts/src/common.sol --pkg-dst=contracts/bindings/common
+.PHONY: contracts/src/interfaces.sol
+contracts/src/interfaces.sol:
+	contraget --path=contracts/src/interfaces.sol --pkg-dst=contracts/bindings/interfaces
