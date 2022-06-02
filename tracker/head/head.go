@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
-	ethereum_t "github.com/cryptoriums/packages/ethereum"
+	"github.com/cryptoriums/packages/constants"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -58,7 +58,7 @@ func New(
 		dstChan:         dstChan,
 		reorgWaitPeriod: reorgWaitPeriod,
 		// To be on the safe side create the cache few times bigger then the expected block count during the reorg wait.
-		cacheHeadTX: gcache.New(int(math.Max(100, 3*ethereum_t.BlocksPerSecond*reorgWaitPeriod.Seconds()))).LRU().Build(),
+		cacheHeadTX: gcache.New(int(math.Max(100, 3*constants.BlocksPerSecond*reorgWaitPeriod.Seconds()))).LRU().Build(),
 	}, dstChan, nil
 }
 func (self *TrackerHead) Start() error {

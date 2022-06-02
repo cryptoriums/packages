@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	ethereum_p "github.com/cryptoriums/packages/ethereum"
+	tx_p "github.com/cryptoriums/packages/tx"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/console/prompt"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -637,10 +637,10 @@ func SelectAccountAndDecrypt(accounts []Account, print bool, msg string) (Accoun
 	}
 }
 
-func EnvAccountsToEthAccounts(accs []Account) ([]ethereum_p.Account, error) {
-	var ethAccs []ethereum_p.Account
+func EnvAccountsToEthAccounts(accs []Account) ([]tx_p.Account, error) {
+	var ethAccs []tx_p.Account
 	for _, acc := range accs {
-		ethAcc, err := ethereum_p.AccountFromPrvKey(acc.Priv)
+		ethAcc, err := tx_p.AccountFromPrvKey(acc.Priv)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting private key to ECDSA")
 		}

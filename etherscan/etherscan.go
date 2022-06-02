@@ -15,6 +15,17 @@ import (
 	"go.uber.org/multierr"
 )
 
+func GetEtherscanURL(netID int64) string {
+	var prefix string
+	switch netID {
+	case 4:
+		prefix = "rinkeby."
+	case 5:
+		prefix = "goerli."
+	}
+	return "https://" + prefix + "etherscan.io"
+}
+
 func DownloadContracts(network etherscan.Network, address string, dstPath string) (map[string]string, error) {
 	client := etherscan.New(network, "")
 	rep, err := client.ContractSource(address)

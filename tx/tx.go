@@ -1,18 +1,17 @@
 // Copyright (c) The Cryptorium Authors.
 // Licensed under the MIT License.
 
-package ethereum
+package tx
 
 import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
-	"regexp"
 	"strings"
-	"time"
 
 	big_p "github.com/cryptoriums/packages/big"
 	client "github.com/cryptoriums/packages/client"
+	"github.com/cryptoriums/packages/constants"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,58 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/pkg/errors"
 )
-
-const (
-	TxGasOverHead      = 21_000
-	ComponentName      = "ethereum"
-	BlockTime          = float64(15)
-	BlocksPerSecond    = float64(1 / BlockTime)
-	BlocksPerMinute    = float64(60 / BlockTime)
-	ReorgEventWaitSafe = time.Minute
-	ReorgEventWaitSlow = 3 * time.Minute
-	ReorgEventWaitFast = 30 * time.Second
-
-	MainnetName = "mainnet"
-	RopstenName = "ropsten"
-	GoerliName  = "goerli"
-	RinkebyName = "rinkeby"
-	HardhatName = "hardhat"
-
-	MainnetID = 1
-	RopstenID = 3
-	GoerliID  = 4
-	RinkebyID = 5
-	HardhatID = 31337
-
-	MaxBlockGasLimit = 30000000
-	MaxGasPriceGwei  = 10_000 // To have some failsafe when creating TX and passing WEI instead of GWEI.
-)
-
-var NetworksByID = map[int64]string{
-	MainnetID: MainnetName,
-	RopstenID: RopstenName,
-	RinkebyID: RinkebyName,
-	GoerliID:  GoerliName,
-	HardhatID: HardhatName,
-}
-
-var NetworksByName = map[string]int64{
-	MainnetName: MainnetID,
-	RopstenName: RopstenID,
-	RinkebyName: RinkebyID,
-	GoerliName:  GoerliID,
-	HardhatName: HardhatID,
-}
-
-var ethAddressRE *regexp.Regexp = regexp.MustCompile("^0x[0-9a-fA-F]{40}$")
-
-// ValidateAddress checks if an ethereum URL is valid?
-func ValidateAddress(address string) error {
-	if match := ethAddressRE.MatchString(address); !match {
-		return errors.New("invalid ethereum address")
-	}
-	return nil
-}
 
 type Account struct {
 	Tags       []string
@@ -127,8 +74,8 @@ func NewSignedTX(
 		}
 	}
 
-	if gasMaxFee > MaxGasPriceGwei || gasTip > MaxGasPriceGwei {
-		return nil, "", errors.Errorf("gas fee:%v or gas tip:%v higher than the maximum allowed:%v", gasMaxFee, gasTip, MaxGasPriceGwei)
+	if gasMaxFee > constants.MaxGasPriceGwei || gasTip > constants.MaxGasPriceGwei {
+		return nil, "", errors.Errorf("gas fee:%v or gas tip:%v higher than the maximum allowed:%v", gasMaxFee, gasTip, constants.MaxGasPriceGwei)
 	}
 
 	if gasMaxFee == 0 {
@@ -178,8 +125,8 @@ func NewTxOpts(
 		gasMaxTipWei = big_p.FloatToBigIntMul(gasMaxTip, params.GWei)
 	}
 
-	if gasMaxFee > MaxGasPriceGwei || gasMaxTip > MaxGasPriceGwei {
-		return nil, errors.Errorf("gas fee:%v or gas tip:%v higher than the maximum allowed:%v", gasMaxFee, gasMaxTip, MaxGasPriceGwei)
+	if gasMaxFee > constants.MaxGasPriceGwei || gasMaxTip > constants.MaxGasPriceGwei {
+		return nil, errors.Errorf("gas fee:%v or gas tip:%v higher than the maximum allowed:%v", gasMaxFee, gasMaxTip, constants.MaxGasPriceGwei)
 	}
 
 	if nonce == 0 {
@@ -196,7 +143,7 @@ func NewTxOpts(
 		}
 	}
 	if gasMaxFeeWei == nil {
-		if NetworksByID[client.NetworkID()] == HardhatName {
+		if constants.NetworksByID[client.NetworkID()] == constants.HardhatName {
 			return nil, errors.New("gasMaxFee is required for the hardhat network as it doesn't support the eth_maxPriorityFeePerGas method for getting the current max fee")
 		}
 		header, err := client.HeaderByNumber(ctx, nil)
@@ -234,17 +181,6 @@ func NewTxOpts(
 	opts.GasFeeCap = gasMaxFeeWei
 	opts.Context = ctx
 	return opts, nil
-}
-
-func GetEtherscanURL(netID int64) string {
-	var prefix string
-	switch netID {
-	case 4:
-		prefix = "rinkeby."
-	case 5:
-		prefix = "goerli."
-	}
-	return "https://" + prefix + "etherscan.io"
 }
 
 type SendTransactionOpts struct {

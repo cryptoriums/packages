@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/cryptoriums/packages/compiler"
-	ethereum_p "github.com/cryptoriums/packages/ethereum"
 	"github.com/cryptoriums/packages/logging"
+	tx_p "github.com/cryptoriums/packages/tx"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -29,7 +29,7 @@ import (
 
 const DefaultUrl = "ws://127.0.0.1:8545"
 
-var Accounts []ethereum_p.Account
+var Accounts []tx_p.Account
 
 func init() {
 	for _, addr := range []string{
@@ -44,7 +44,7 @@ func init() {
 		"0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6",
 		"0xf214f2b2cd398c806f84e317254e0f0b801d0643303237d97a22a48e01628897"} {
 
-		acc, err := ethereum_p.AccountFromPrvKey(addr)
+		acc, err := tx_p.AccountFromPrvKey(addr)
 		if err != nil {
 			panic(err)
 		}
@@ -226,7 +226,7 @@ func TxWithImpersonateAccount(ctx context.Context, nodeURL string, from common.A
 	if err != nil {
 		return "", errors.Wrap(err, "packing the args")
 	}
-	optsT := ethereum_p.SendTransactionOpts{
+	optsT := tx_p.SendTransactionOpts{
 		From: from,
 		To:   to,
 		Data: hexutil.Encode(data),

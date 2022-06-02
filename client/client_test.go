@@ -1,15 +1,15 @@
 // Copyright (c) The Cryptorium Authors.
 // Licensed under the MIT License.
 
-package ethereum_test
+package client_test
 
 import (
 	"context"
 	"math/big"
 	"testing"
 
+	"github.com/cryptoriums/packages/client"
 	"github.com/cryptoriums/packages/env"
-	ethereum_p "github.com/cryptoriums/packages/ethereum"
 	"github.com/cryptoriums/packages/testing/contracts/bindings/gauge"
 	"github.com/cryptoriums/packages/testutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -23,7 +23,7 @@ func TestEthCall(t *testing.T) {
 	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "mainnet")
 	testutil.Ok(t, err)
 
-	client, err := ethereum_p.NewClientCachedNetID(ctx, log.NewNopLogger(), e.Nodes[0].URL)
+	client, err := client.NewClientCachedNetID(ctx, log.NewNopLogger(), e.Nodes[0].URL)
 	testutil.Ok(t, err)
 
 	callOpts := &bind.CallOpts{

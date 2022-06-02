@@ -14,7 +14,7 @@ import (
 	"github.com/bluele/gcache"
 	"github.com/cryptoriums/packages/client"
 	"github.com/cryptoriums/packages/client/events"
-	ethereum_t "github.com/cryptoriums/packages/ethereum"
+	"github.com/cryptoriums/packages/constants"
 	"github.com/cryptoriums/packages/logging"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -81,7 +81,7 @@ func New(
 	}
 
 	if lookBack != 0 {
-		blockNums := ethereum_t.BlocksPerMinute * lookBack.Minutes()
+		blockNums := constants.BlocksPerMinute * lookBack.Minutes()
 
 		headerNow, err := client.HeaderByNumber(ctx, nil)
 		if err != nil {
@@ -106,7 +106,7 @@ func New(
 		reorgWaitPeriod:  reorgWaitPeriod,
 		reorgWaitPending: make(map[string]context.CancelFunc),
 		// To be on the safe side create the cache few times bigger then the expected block count during the reorg wait.
-		cacheSentTXs: gcache.New(int(math.Max(100, 100*ethereum_t.BlocksPerSecond*reorgWaitPeriod.Seconds()))).LRU().Build(),
+		cacheSentTXs: gcache.New(int(math.Max(100, 100*constants.BlocksPerSecond*reorgWaitPeriod.Seconds()))).LRU().Build(),
 	}, dstChan, nil
 }
 func (self *TrackerEvents) Start() error {
