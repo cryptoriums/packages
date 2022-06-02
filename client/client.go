@@ -6,14 +6,15 @@ package client
 import (
 	"context"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/cryptoriums/packages/client/events"
 	"github.com/cryptoriums/packages/client/head"
-	ethereum_p "github.com/cryptoriums/packages/ethereum"
 	"github.com/cryptoriums/packages/logging"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -23,6 +24,26 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
+
+type EthClient interface {
+	ethereum.PendingStateReader
+	bind.ContractBackend
+	ethereum.ChainStateReader
+	ethereum.ChainReader
+	ethereum.TransactionReader
+	NetworkID() int64
+	BlockNumber(ctx context.Context) (uint64, error)
+	Close()
+}
+
+type ContextCaller interface {
+	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
+}
+
+type EthClientRpc interface {
+	EthClient
+	ContextCaller
+}
 
 const (
 	defaultRetry  = 2 * time.Second
@@ -44,9 +65,9 @@ type ClientWithRetry struct {
 	head.HeadSubscriber
 }
 
-func NewClientWithRetry(ctx context.Context, logger log.Logger, cfg Config, nodes []string) (ethereum_p.EthClientRpc, error) {
+func NewClientWithRetry(ctx context.Context, logger log.Logger, cfg Config, nodes []string) (EthClientRpc, error) {
 
-	ethClients, rpcClients, netID, err := ethereum_p.NewClients(ctx, logger, nodes)
+	ethClients, rpcClients, netID, err := NewClients(ctx, logger, nodes)
 	if err != nil {
 		return nil, err
 	}
@@ -389,4 +410,90 @@ func (self *ClientWithRetry) HeaderByNumber(ctx context.Context, number *big.Int
 			return result, nil
 		}
 	}
+}
+
+func NewClient(ctx context.Context, logger log.Logger, nodeURL string) (EthClient, error) {
+	nodes := strings.Split(nodeURL, ",")
+	if len(nodes) == 0 {
+		return nil, errors.New("the env file doesn't contain any node urls")
+	}
+
+	ethClient, rpcClient, netID, err := NewClients(ctx, logger, nodes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ClientCachedNetID{
+		Client:    ethClient[0],
+		netID:     netID,
+		rpcClient: rpcClient[0],
+	}, nil
+}
+
+func NewClients(ctx context.Context, logger log.Logger, nodeURLs []string) ([]*ethclient.Client, []*rpc.Client, int64, error) {
+	var (
+		ethClients []*ethclient.Client
+		rpcClients []*rpc.Client
+		lastNetID  int64
+	)
+
+	for i, nodeURL := range nodeURLs {
+		rpcClient, err := rpc.DialContext(ctx, nodeURL)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		ethClient := ethclient.NewClient(rpcClient)
+
+		// Issue #55, halt if client is still syncing with Ethereum network
+		s, err := ethClient.SyncProgress(ctx)
+		if err != nil {
+			return nil, nil, 0, errors.Wrap(err, "determining if Ethereum client is syncing")
+		}
+		if s != nil {
+			return nil, nil, 0, errors.New("ethereum node is still syncing with the network")
+		}
+
+		netID, err := ethClient.NetworkID(ctx)
+		if err != nil {
+			return nil, nil, 0, errors.Wrap(err, "get nerwork ID")
+		}
+		if i > 0 && lastNetID != netID.Int64() {
+			return nil, nil, 0, errors.Wrap(err, "can't use multiple nodes with different network IDS")
+		}
+
+		lastNetID = netID.Int64()
+
+		level.Info(logger).Log("msg", "created ethereum client", "netID", netID.Int64(), "node", nodeURL)
+		ethClients = append(ethClients, ethClient)
+		rpcClients = append(rpcClients, rpcClient)
+	}
+
+	return ethClients, rpcClients, lastNetID, nil
+}
+
+func NewClientCachedNetID(ctx context.Context, logger log.Logger, nodeURL string) (EthClientRpc, error) {
+	ethClient, rpcClient, netID, err := NewClients(ctx, logger, []string{nodeURL})
+	if err != nil {
+		return nil, err
+	}
+
+	return &ClientCachedNetID{
+		Client:    ethClient[0],
+		netID:     netID,
+		rpcClient: rpcClient[0],
+	}, nil
+}
+
+type ClientCachedNetID struct {
+	*ethclient.Client
+	netID     int64
+	rpcClient *rpc.Client
+}
+
+func (self *ClientCachedNetID) NetworkID() int64 {
+	return self.netID
+}
+
+func (self *ClientCachedNetID) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+	return self.rpcClient.CallContext(ctx, result, method, args...)
 }

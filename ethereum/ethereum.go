@@ -12,44 +12,19 @@ import (
 	"time"
 
 	big_p "github.com/cryptoriums/packages/big"
-	"github.com/ethereum/go-ethereum"
+	client "github.com/cryptoriums/packages/client"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
 )
 
-type EthClient interface {
-	ethereum.PendingStateReader
-	bind.ContractBackend
-	ethereum.ChainStateReader
-	ethereum.ChainReader
-	ethereum.TransactionReader
-	NetworkID() int64
-	BlockNumber(ctx context.Context) (uint64, error)
-	Close()
-}
-
-type ContextCaller interface {
-	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
-}
-
-type EthClientRpc interface {
-	EthClient
-	ContextCaller
-}
-
 const (
 	TxGasOverHead      = 21_000
-	PrivateKeysEnvName = "ETH_PRIVATE_KEYS"
 	ComponentName      = "ethereum"
 	BlockTime          = float64(15)
 	BlocksPerSecond    = float64(1 / BlockTime)
@@ -101,7 +76,7 @@ func ValidateAddress(address string) error {
 }
 
 type Account struct {
-	Name       string
+	Tags       []string
 	PublicKey  common.Address
 	PrivateKey *ecdsa.PrivateKey
 }
@@ -121,92 +96,6 @@ func AccountFromPrvKey(pkey string) (Account, error) {
 
 	publicAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
 	return Account{PublicKey: publicAddress, PrivateKey: privateKey}, nil
-}
-
-func NewClient(ctx context.Context, logger log.Logger, nodeURL string) (EthClient, error) {
-	nodes := strings.Split(nodeURL, ",")
-	if len(nodes) == 0 {
-		return nil, errors.New("the env file doesn't contain any node urls")
-	}
-
-	ethClient, rpcClient, netID, err := NewClients(ctx, logger, nodes)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ClientCachedNetID{
-		Client:    ethClient[0],
-		netID:     netID,
-		rpcClient: rpcClient[0],
-	}, nil
-}
-
-func NewClients(ctx context.Context, logger log.Logger, nodeURLs []string) ([]*ethclient.Client, []*rpc.Client, int64, error) {
-	var (
-		ethClients []*ethclient.Client
-		rpcClients []*rpc.Client
-		lastNetID  int64
-	)
-
-	for i, nodeURL := range nodeURLs {
-		rpcClient, err := rpc.DialContext(ctx, nodeURL)
-		if err != nil {
-			return nil, nil, 0, err
-		}
-		ethClient := ethclient.NewClient(rpcClient)
-
-		// Issue #55, halt if client is still syncing with Ethereum network
-		s, err := ethClient.SyncProgress(ctx)
-		if err != nil {
-			return nil, nil, 0, errors.Wrap(err, "determining if Ethereum client is syncing")
-		}
-		if s != nil {
-			return nil, nil, 0, errors.New("ethereum node is still syncing with the network")
-		}
-
-		netID, err := ethClient.NetworkID(ctx)
-		if err != nil {
-			return nil, nil, 0, errors.Wrap(err, "get nerwork ID")
-		}
-		if i > 0 && lastNetID != netID.Int64() {
-			return nil, nil, 0, errors.Wrap(err, "can't use multiple nodes with different network IDS")
-		}
-
-		lastNetID = netID.Int64()
-
-		level.Info(logger).Log("msg", "created ethereum client", "netID", netID.Int64(), "node", nodeURL)
-		ethClients = append(ethClients, ethClient)
-		rpcClients = append(rpcClients, rpcClient)
-	}
-
-	return ethClients, rpcClients, lastNetID, nil
-}
-
-func NewClientCachedNetID(ctx context.Context, logger log.Logger, nodeURL string) (EthClientRpc, error) {
-	ethClient, rpcClient, netID, err := NewClients(ctx, logger, []string{nodeURL})
-	if err != nil {
-		return nil, err
-	}
-
-	return &ClientCachedNetID{
-		Client:    ethClient[0],
-		netID:     netID,
-		rpcClient: rpcClient[0],
-	}, nil
-}
-
-type ClientCachedNetID struct {
-	*ethclient.Client
-	netID     int64
-	rpcClient *rpc.Client
-}
-
-func (self *ClientCachedNetID) NetworkID() int64 {
-	return self.netID
-}
-
-func (self *ClientCachedNetID) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
-	return self.rpcClient.CallContext(ctx, result, method, args...)
 }
 
 func NewSignedTX(
@@ -271,7 +160,7 @@ func NewSignedTX(
 
 func NewTxOpts(
 	ctx context.Context,
-	client EthClient,
+	client client.EthClient,
 	nonce uint64,
 	account Account,
 	gasMaxFee float64,

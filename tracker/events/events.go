@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
+	"github.com/cryptoriums/packages/client"
 	"github.com/cryptoriums/packages/client/events"
 	ethereum_t "github.com/cryptoriums/packages/ethereum"
 	"github.com/cryptoriums/packages/logging"
@@ -37,7 +38,7 @@ type TrackerEvents struct {
 	logger       log.Logger
 	ctx          context.Context
 	stop         context.CancelFunc
-	client       ethereum_t.EthClient
+	client       client.EthClient
 	mtx          sync.Mutex
 	cacheSentTXs gcache.Cache
 	addrs        []common.Address
@@ -53,7 +54,7 @@ func New(
 	ctx context.Context,
 	logger log.Logger,
 	cfg Config,
-	client ethereum_t.EthClient,
+	client client.EthClient,
 	addrs []common.Address,
 	fromBlock uint64,
 	lookBack time.Duration,
