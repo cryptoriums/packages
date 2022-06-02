@@ -656,11 +656,3 @@ func ApiKeysToMap(keys []ApiKey) map[string]string {
 	}
 	return keysMap
 }
-
-func ContractsToAddresses(contracts []Contract) []common.Address {
-	var addrses []common.Address
-	for _, contract := range contracts {
-		addrses = append(addrses, contract.Address)
-	}
-	return addrses
-}
