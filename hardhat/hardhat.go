@@ -81,7 +81,7 @@ func Fork(logger log.Logger, args ...string) *exec.Cmd {
 	for {
 		ctx, cncl := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cncl()
-		client, err := ethclient.DialContext(ctx, "http://localhost:8545")
+		client, err := ethclient.DialContext(ctx, DefaultUrl)
 		if err == nil {
 			_, err := client.BlockNumber(ctx)
 			if err == nil {
@@ -91,6 +91,7 @@ func Fork(logger log.Logger, args ...string) *exec.Cmd {
 		level.Error(logger).Log("msg", "error connecting will retry")
 		time.Sleep(time.Second)
 	}
+
 	return cmd
 }
 
@@ -234,6 +235,11 @@ func TxWithImpersonateAccount(ctx context.Context, nodeURL string, from common.A
 	err = rpcClient.CallContext(ctx, &txHash, "eth_sendTransaction", optsT)
 	if err != nil {
 		return "", errors.Wrap(err, "calling eth_sendTransaction")
+	}
+
+	err = rpcClient.CallContext(ctx, nil, "hardhat_stopImpersonatingAccount", from)
+	if err != nil {
+		return "", errors.Wrap(err, "calling hardhat_stopImpersonatingAccount")
 	}
 
 	return txHash, nil
