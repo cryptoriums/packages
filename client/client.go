@@ -438,21 +438,24 @@ func NewClients(ctx context.Context, logger log.Logger, nodeURLs []string) ([]*e
 	)
 
 	for i, nodeURL := range nodeURLs {
-		rpcClient, err := rpc.DialContext(ctx, nodeURL)
-		if err != nil {
-			return nil, nil, 0, err
+		var rpcClient *rpc.Client
+		for {
+			select {
+			case <-ctx.Done():
+				return nil, nil, 0, ctx.Err()
+			default:
+			}
+
+			var err error
+			rpcClient, err = rpc.DialContext(ctx, nodeURL)
+			if err != nil {
+				level.Error(logger).Log("msg", "rpc.DialContext, will retry", "err", err)
+				time.Sleep(time.Second)
+				continue
+			}
+			break
 		}
 		ethClient := ethclient.NewClient(rpcClient)
-
-		// Issue #55, halt if client is still syncing with Ethereum network
-		s, err := ethClient.SyncProgress(ctx)
-		if err != nil {
-			return nil, nil, 0, errors.Wrap(err, "determining if Ethereum client is syncing")
-		}
-		if s != nil {
-			return nil, nil, 0, errors.New("ethereum node is still syncing with the network")
-		}
-
 		netID, err := ethClient.NetworkID(ctx)
 		if err != nil {
 			return nil, nil, 0, errors.Wrap(err, "get nerwork ID")
