@@ -9,7 +9,6 @@ import (
 	"math/big"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"runtime"
 	"syscall"
@@ -57,39 +56,41 @@ func Assert(tb testing.TB, condition bool, v ...interface{}) {
 	if len(v) > 0 {
 		msg = fmt.Sprintf(v[0].(string), v[1:]...)
 	}
-	tb.Fatalf("\033[31m%s:%d: "+msg+"\033[39m\n\n", filepath.Base(file), line)
+	tb.Fatalf("\033[31m%s:%d: "+msg+"\033[39m\n\n", file, line)
 }
 
 func IsRevertErr(tb testing.TB, err error) {
 	_, file, line, _ := runtime.Caller(1)
 
 	if err == nil {
-		tb.Fatalf("\033[31m%s:%d: expected an error, but got nil\033[39m\n", filepath.Base(file), line)
+		tb.Fatalf("\033[31m%s:%d: expected an error, but got nil\033[39m\n", file, line)
 	}
 
 	errRpc, ok := errors.Cause(err).(rpc.Error)
 	if !ok {
-		tb.Fatalf("\033[31m%s:%d:not a rpc.Error\n\n unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
+		tb.Fatalf("\033[31m%s:%d:not a rpc.Error\n\n unexpected error: %s\033[39m\n\n", file, line, err.Error())
 	}
 
 	// Internal JSON-RPC error.
 	// https://www.jsonrpc.org/specification
 	if errRpc.ErrorCode() != -32603 {
-		tb.Fatalf("\033[31m%s:%d:not a expected revert code\n\n unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
+		tb.Fatalf("\033[31m%s:%d:not a expected revert code\n\n unexpected error: %s\033[39m\n\n", file, line, err.Error())
 	}
 }
 
 func IsRevertErrWithMessage(tb testing.TB, err error, msg string) {
-	IsRevertErr(tb, err)
-
 	_, file, line, _ := runtime.Caller(1)
+
+	if err == nil {
+		tb.Fatalf("\033[31m%s:%d\n expected error, got nothing \033[39m\n\n", file, line)
+	}
 
 	errRpc, ok := errors.Cause(err).(rpc.Error)
 	if !ok {
-		tb.Fatalf("\033[31m%s:%d:not a rpc.Error\n\n unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
+		tb.Fatalf("\033[31m%s:%d:not a rpc.Error\n\n unexpected error: %s\033[39m\n\n", file, line, err.Error())
 	}
 	if errRpc.Error() != fmt.Sprintf("Error: VM Exception while processing transaction: reverted with reason string '%v'", msg) {
-		tb.Fatalf("\033[31m%s:%d:not a expected revert message:"+msg+"\n\n unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
+		tb.Fatalf("\033[31m%s:%d:not a expected revert message:"+msg+"\n\n unexpected error: %s\033[39m\n\n", file, line, err.Error())
 	}
 }
 
@@ -105,7 +106,7 @@ func Ok(tb testing.TB, err error, v ...interface{}) {
 	if len(v) > 0 {
 		msg = fmt.Sprintf(v[0].(string), v[1:]...)
 	}
-	tb.Fatalf("\033[31m%s:%d:"+msg+"\n\n unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
+	tb.Fatalf("\033[31m%s:%d:"+msg+"\n\n unexpected error: %s\033[39m\n\n", file, line, err.Error())
 }
 
 func OkIgnoreNotFount(tb testing.TB, err error, v ...interface{}) {
@@ -123,17 +124,14 @@ func KillCmd(t testing.TB, cmd *exec.Cmd) {
 
 // NotOk fails the test if an err is nil.
 func NotOk(tb testing.TB, err error, v ...interface{}) {
-	tb.Helper()
-	if err != nil {
-		return
-	}
 	_, file, line, _ := runtime.Caller(1)
 
 	var msg string
 	if len(v) > 0 {
 		msg = fmt.Sprintf(v[0].(string), v[1:]...)
 	}
-	tb.Fatalf("\033[31m%s:%d:"+msg+"\n\n expected error, got nothing \033[39m\n\n", filepath.Base(file), line)
+
+	tb.Fatalf("\033[31m%s:%d:"+msg+"\n\n expected error, got nothing \033[39m\n\n", file, line)
 }
 
 // Equals fails the test if exp is not equal to act.
@@ -148,7 +146,7 @@ func Equals(tb testing.TB, exp, act interface{}, v ...interface{}) {
 	if len(v) > 0 {
 		msg = fmt.Sprintf(v[0].(string), v[1:]...)
 	}
-	tb.Fatal(sprintfWithLimit("\033[31m%s:%d:"+msg+"\n\n\texp: %#v\n\n\tgot: %#v%s\033[39m\n\n", filepath.Base(file), line, exp, act, diff(exp, act)))
+	tb.Fatal(sprintfWithLimit("\033[31m%s:%d:"+msg+"\n\n\texp: %#v\n\n\tgot: %#v%s\033[39m\n\n", file, line, exp, act, diff(exp, act)))
 }
 
 func sprintfWithLimit(act string, v ...interface{}) string {
