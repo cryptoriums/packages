@@ -1,0 +1,23 @@
+{
+    "Nodes": [
+        {
+            "URL": "https://eth-mainnet.alchemyapi.io/v2/...",
+            "Tags": [
+                "mainnet"
+            ]
+        },
+        {
+            "URL": "https://eth-goerli.alchemyapi.io/v2/...",
+            "Tags": [
+                "goerli"
+            ]
+        }
+    ],
+    "Accounts": [
+        {
+            "Pub": "...",
+            "Priv": "...",
+            "Tags": ["goerli"]
+        }
+    ]
+}
