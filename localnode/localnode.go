@@ -6,7 +6,6 @@ package localnode
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"math/big"
 	"os"
 	"os/exec"
@@ -33,13 +32,12 @@ type NodeType string
 var (
 	Hardhat NodeType = "hardhat"
 	Anvil   NodeType = "anvil"
-
-	Accounts []tx_p.Account
 )
 
 const DefaultUrl = "ws://127.0.0.1:8545"
 
-func init() {
+func initAccounts() []tx_p.Account {
+	var Accounts []tx_p.Account
 	for _, addr := range []string{
 		"0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
 		"0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
@@ -58,18 +56,78 @@ func init() {
 		}
 		Accounts = append(Accounts, acc)
 	}
+
+	return Accounts
 }
 
-func validateNodeType(nodeType NodeType) error {
-	switch nodeType {
-	case Anvil, Hardhat:
-		return nil
+type localNode struct {
+	nodeType    NodeType
+	forkNodeURL string
+	nodeURL     string
+	cmd         *exec.Cmd
+	accounts    []tx_p.Account
+	logger      log.Logger
+}
+
+func New(logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber string) *localNode {
+	if forkNodeURL == "" {
+		logger.Log("invalid forkNodeURL")
 	}
 
-	return fmt.Errorf("invalid node type: %s", nodeType)
+	if nodeType == "" {
+		nodeType = Hardhat
+	}
+
+	ln := &localNode{
+		nodeType:    nodeType,
+		forkNodeURL: forkNodeURL,
+		nodeURL:     DefaultUrl,
+		accounts:    initAccounts(),
+		logger:      logger,
+	}
+
+	if blockNumber == "" {
+		blockNumber = "latest"
+	}
+
+	switch ln.nodeType {
+	case Hardhat:
+		ln.cmd = fork(ln.logger, "npx", "hardhat", "node", "--fork", ln.forkNodeURL, "--fork-block-number", blockNumber)
+	case Anvil:
+		ln.cmd = fork(ln.logger, "anvil", "--fork-url", ln.forkNodeURL, "--fork-block-number", blockNumber)
+	}
+
+	return ln
 }
 
-func Fork(logger log.Logger, args ...string) *exec.Cmd {
+func (ln *localNode) Stop() {
+	if ln.cmd == nil {
+		ln.logger.Log("no cmd")
+		os.Exit(1)
+	}
+
+	pgid, err := syscall.Getpgid(ln.cmd.Process.Pid)
+	if err != nil {
+		ln.logger.Log(err.Error())
+		os.Exit(1)
+	}
+
+	if err := syscall.Kill(-pgid, 9); err != nil {
+		ln.logger.Log(err.Error())
+		os.Exit(1)
+	}
+
+}
+
+func (ln *localNode) GetAccounts() []tx_p.Account {
+	return ln.accounts
+}
+
+func (ln *localNode) GetNodeURL() string {
+	return ln.nodeURL
+}
+
+func fork(logger log.Logger, args ...string) *exec.Cmd {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
@@ -112,8 +170,8 @@ func Fork(logger log.Logger, args ...string) *exec.Cmd {
 	return cmd
 }
 
-func replaceContract(ctx context.Context, nodeType NodeType, nodeURL string, contractPath string, contractName string, contractAddrToReplace common.Address) error {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) ReplaceContract(ctx context.Context, contractPath string, contractName string, contractAddrToReplace common.Address) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -170,7 +228,7 @@ func replaceContract(ctx context.Context, nodeType NodeType, nodeURL string, con
 		return errors.New("start index of runtime Bytecode not found in the generated binary file")
 	}
 
-	callSetCode := string(nodeType) + "_setCode"
+	callSetCode := string(ln.nodeType) + "_setCode"
 	err = rpcClient.CallContext(ctx, nil, callSetCode, contractAddrToReplace, "0x"+bin[startDeployBin:])
 	if err != nil {
 		return errors.Wrapf(err, "%s", callSetCode)
@@ -179,20 +237,8 @@ func replaceContract(ctx context.Context, nodeType NodeType, nodeURL string, con
 	return nil
 }
 
-func ReplaceContract(ctx context.Context, nodeType NodeType, nodeURL string, contractPath string, contractName string, contractAddrToReplace common.Address) error {
-	if nodeType == "" {
-		nodeType = Anvil
-	}
-
-	if err := validateNodeType(nodeType); err != nil {
-		return errors.Wrap(err, "validate node type")
-	}
-
-	return replaceContract(ctx, nodeType, nodeURL, contractPath, contractName, contractAddrToReplace)
-}
-
-func DisableAutoMine(ctx context.Context, nodeURL string) error {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) DisableAutoMine(ctx context.Context) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -206,8 +252,8 @@ func DisableAutoMine(ctx context.Context, nodeURL string) error {
 	return nil
 }
 
-func Mine(ctx context.Context, nodeURL string) error {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) Mine(ctx context.Context) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -221,8 +267,8 @@ func Mine(ctx context.Context, nodeURL string) error {
 	return nil
 }
 
-func SetNextBlockTimestamp(ctx context.Context, nodeURL string, ts int64) error {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) SetNextBlockTimestamp(ctx context.Context, ts int64) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -236,14 +282,14 @@ func SetNextBlockTimestamp(ctx context.Context, nodeURL string, ts int64) error 
 	return nil
 }
 
-func txWithImpersonateAccount(ctx context.Context, nodeType NodeType, nodeURL string, from common.Address, to common.Address, abiJ string, funcName string, args ...interface{}) (string, error) {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) TxWithImpersonateAccount(ctx context.Context, from common.Address, to common.Address, abiJ string, funcName string, args ...interface{}) (string, error) {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return "", errors.Wrap(err, "creating rpc client")
 	}
 	defer rpcClient.Close()
 
-	callImpersonateAccount := string(nodeType) + "_impersonateAccount"
+	callImpersonateAccount := string(ln.nodeType) + "_impersonateAccount"
 	err = rpcClient.CallContext(ctx, nil, callImpersonateAccount, from)
 	if err != nil {
 		return "", errors.Wrapf(err, "calling %s", callImpersonateAccount)
@@ -268,7 +314,7 @@ func txWithImpersonateAccount(ctx context.Context, nodeType NodeType, nodeURL st
 		return "", errors.Wrap(err, "calling eth_sendTransaction")
 	}
 
-	callStopImpersonatingAccount := string(nodeType) + "_stopImpersonatingAccount"
+	callStopImpersonatingAccount := string(ln.nodeType) + "_stopImpersonatingAccount"
 	err = rpcClient.CallContext(ctx, nil, callStopImpersonatingAccount, from)
 	if err != nil {
 		return "", errors.Wrapf(err, "calling %s", callStopImpersonatingAccount)
@@ -277,26 +323,14 @@ func txWithImpersonateAccount(ctx context.Context, nodeType NodeType, nodeURL st
 	return txHash, nil
 }
 
-func TxWithImpersonateAccount(ctx context.Context, nodeType NodeType, nodeURL string, from common.Address, to common.Address, abiJ string, funcName string, args ...interface{}) (string, error) {
-	if nodeType == "" {
-		nodeType = Anvil
-	}
-
-	if err := validateNodeType(nodeType); err != nil {
-		return "", errors.Wrap(err, "validate node type")
-	}
-
-	return txWithImpersonateAccount(ctx, nodeType, nodeURL, from, to, abiJ, funcName, args...)
-}
-
-func setBalance(ctx context.Context, nodeType NodeType, nodeURL string, of common.Address, amnt *big.Int) error {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) SetBalance(ctx context.Context, of common.Address, amnt *big.Int) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
 	defer rpcClient.Close()
 
-	callSetBalance := string(nodeType) + "_setBalance"
+	callSetBalance := string(ln.nodeType) + "_setBalance"
 
 	err = rpcClient.CallContext(ctx, nil, callSetBalance, of, hexutil.EncodeBig(amnt))
 	if err != nil {
@@ -306,26 +340,14 @@ func setBalance(ctx context.Context, nodeType NodeType, nodeURL string, of commo
 	return nil
 }
 
-func SetBalance(ctx context.Context, nodeType NodeType, nodeURL string, of common.Address, amnt *big.Int) error {
-	if nodeType == "" {
-		nodeType = Anvil
-	}
-
-	if err := validateNodeType(nodeType); err != nil {
-		return errors.Wrap(err, "validate node type")
-	}
-
-	return setBalance(ctx, nodeType, nodeURL, of, amnt)
-}
-
-func setStorageAt(ctx context.Context, nodeType NodeType, nodeURL string, addr common.Address, idx string, val string) error {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) SetStorageAt(ctx context.Context, addr common.Address, idx string, val string) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
 	defer rpcClient.Close()
 
-	callSetStorageAt := string(nodeType) + "_setStorageAt"
+	callSetStorageAt := string(ln.nodeType) + "_setStorageAt"
 
 	err = rpcClient.CallContext(ctx, nil, callSetStorageAt, addr.Hex(), idx, val)
 	if err != nil {
@@ -333,16 +355,4 @@ func setStorageAt(ctx context.Context, nodeType NodeType, nodeURL string, addr c
 	}
 
 	return nil
-}
-
-func SetStorageAt(ctx context.Context, nodeType NodeType, nodeURL string, addr common.Address, idx string, val string) error {
-	if nodeType == "" {
-		nodeType = Anvil
-	}
-
-	if err := validateNodeType(nodeType); err != nil {
-		return errors.Wrap(err, "validate node type")
-	}
-
-	return setStorageAt(ctx, nodeType, nodeURL, addr, idx, val)
 }
