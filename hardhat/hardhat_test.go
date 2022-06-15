@@ -22,7 +22,8 @@ import (
 func TestReplaceContract(t *testing.T) {
 	ctx := context.Background()
 
-	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "http")
+	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "mainnet")
+	// e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "http")
 	testutil.Ok(t, err)
 
 	cmd := Fork(log.NewNopLogger(), "npx", "hardhat", "node", "--fork", e.Nodes[0].URL, "--fork-block-number", "13858002")
@@ -51,8 +52,8 @@ func TestReplaceContract(t *testing.T) {
 
 func TestImpersonateAccount(t *testing.T) {
 	ctx := context.Background()
-
-	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "http")
+	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "mainnet")
+	// e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "http")
 	testutil.Ok(t, err)
 
 	cmd := Fork(log.NewNopLogger(), "npx", "hardhat", "node", "--fork", e.Nodes[0].URL, "--fork-block-number", "13858002")
