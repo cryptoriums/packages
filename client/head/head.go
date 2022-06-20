@@ -74,7 +74,7 @@ func (self *HeadSubscriberWithRedundancy) SubscribeNewHead(ctx context.Context, 
 		errSrc = append(errSrc, sub.Err())
 	}
 
-	logger := log.With(self.logger, "subscriptionID", fmt.Sprint(chDst))
+	logger := log.With(self.logger, "subscriptionID", fmt.Sprintf("%v", chDst))
 	multiSub := NewMultiSubscription(ctx, logger, subs, chSrc, chDst, errSrc)
 	return multiSub, nil
 }
