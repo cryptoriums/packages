@@ -72,6 +72,7 @@ type localNode struct {
 func New(logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber string) *localNode {
 	if forkNodeURL == "" {
 		logger.Log("invalid forkNodeURL")
+		os.Exit(1)
 	}
 
 	if nodeType == "" {
