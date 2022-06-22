@@ -122,3 +122,104 @@ func Test_Hardhat(t *testing.T) {
 	})
 
 }
+
+func Test_Foundry_Anvil(t *testing.T) {
+
+	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "mainnet")
+	testutil.Ok(t, err)
+
+	ln := New(log.NewNopLogger(), Anvil, e.Nodes[0].URL, "13858047")
+	defer ln.Stop()
+
+	ctx := context.Background()
+
+	client, err := ethclient.DialContext(ctx, ln.GetNodeURL())
+	testutil.Ok(t, err)
+
+	t.Run("ReplaceContract", func(t *testing.T) {
+
+		err = ln.ReplaceContract(
+			ctx,
+			"../testing/contracts/source/Booster.sol",
+			"Booster",
+			common.HexToAddress(boosterContract),
+		)
+		testutil.Ok(t, err)
+
+		boosterInstance, err := booster.NewBooster(common.HexToAddress(boosterContract), client)
+		testutil.Ok(t, err)
+
+		repl, err := boosterInstance.PoolLength(&bind.CallOpts{Context: ctx})
+		testutil.Ok(t, err)
+
+		testutil.Equals(t, big.NewInt(67), repl)
+	})
+
+	t.Run("SetBalance", func(t *testing.T) {
+		from := ln.GetAccounts()[0].PublicKey
+		newBalance := big_p.FloatToBigIntMul(1000, params.Ether)
+		err = ln.SetBalance(ctx, from, newBalance)
+		testutil.Ok(t, err)
+
+		newAct, err := client.BalanceAt(ctx, from, nil)
+		testutil.Ok(t, err)
+		testutil.Equals(t, newBalance, newAct)
+	})
+
+	t.Run("Mine", func(t *testing.T) {
+
+		blockBefore, err := client.BlockByNumber(ctx, big.NewInt(13858047))
+		testutil.Ok(t, err)
+
+		testutil.Equals(t, "13858047", blockBefore.Number().String())
+
+		err = ln.Mine(ctx)
+		testutil.Ok(t, err)
+
+		blockAfter, err := client.BlockByNumber(ctx, nil)
+		testutil.Ok(t, err)
+
+		testutil.Equals(t, "13858048", blockAfter.Number().String())
+	})
+
+	t.Run("ImpersonateAccountReplaceContract", func(t *testing.T) {
+		from := common.HexToAddress(boosterFeeManager)
+		to := common.HexToAddress(boosterContract)
+		newFeeManager := ln.GetAccounts()[0].PublicKey
+
+		boosterInstance, err := booster.NewBooster(common.HexToAddress(boosterContract), client)
+		testutil.Ok(t, err)
+
+		addrFeeMngr, err := boosterInstance.FeeManager(&bind.CallOpts{Context: ctx})
+		testutil.Ok(t, err)
+
+		testutil.Equals(t, from, addrFeeMngr)
+
+		// Set some balance of the account which will run the impersonated TX.
+		{
+			newBalance := big_p.FloatToBigIntMul(1000, params.Ether)
+			err = ln.SetBalance(ctx, from, newBalance)
+			testutil.Ok(t, err)
+
+			newAct, err := client.BalanceAt(ctx, from, nil)
+			testutil.Ok(t, err)
+			testutil.Equals(t, newBalance, newAct)
+		}
+
+		_, err = ln.TxWithImpersonateAccount(
+			ctx,
+			from,
+			to,
+			booster.BoosterABI,
+			"setFeeManager",
+			newFeeManager,
+		)
+		testutil.Ok(t, err)
+
+		addrAct, err := boosterInstance.FeeManager(&bind.CallOpts{Context: ctx})
+		testutil.Ok(t, err)
+
+		testutil.Equals(t, newFeeManager, addrAct)
+	})
+
+}
