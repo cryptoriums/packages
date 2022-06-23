@@ -27,7 +27,8 @@ func Test_Hardhat(t *testing.T) {
 	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "mainnet")
 	testutil.Ok(t, err)
 
-	ln := New(log.NewNopLogger(), Hardhat, e.Nodes[0].URL, "13858047")
+	ln, err := New(log.NewNopLogger(), Hardhat, e.Nodes[0].URL, "13858047")
+	testutil.Ok(t, err)
 	defer ln.Stop()
 
 	ctx := context.Background()
@@ -128,7 +129,8 @@ func Test_Foundry_Anvil(t *testing.T) {
 	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "mainnet")
 	testutil.Ok(t, err)
 
-	ln := New(log.NewNopLogger(), Anvil, e.Nodes[0].URL, "13858047")
+	ln, err := New(log.NewNopLogger(), Anvil, e.Nodes[0].URL, "13858047")
+	testutil.Ok(t, err)
 	defer ln.Stop()
 
 	ctx := context.Background()
@@ -223,4 +225,3 @@ func Test_Foundry_Anvil(t *testing.T) {
 	})
 
 }
-

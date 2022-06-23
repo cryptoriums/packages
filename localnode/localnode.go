@@ -6,6 +6,7 @@ package localnode
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"math/big"
 	"os"
 	"os/exec"
@@ -69,10 +70,9 @@ type localNode struct {
 	logger      log.Logger
 }
 
-func New(logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber string) *localNode {
+func New(logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber string) (*localNode, error) {
 	if forkNodeURL == "" {
-		logger.Log("invalid forkNodeURL")
-		os.Exit(1)
+		return nil, fmt.Errorf("invalid forkNodeURL")
 	}
 
 	if nodeType == "" {
@@ -98,7 +98,7 @@ func New(logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber s
 		ln.cmd = fork(ln.logger, "anvil", "--fork-url", ln.forkNodeURL, "--fork-block-number", blockNumber)
 	}
 
-	return ln
+	return ln, nil
 }
 
 func (ln *localNode) Stop() {
