@@ -22,12 +22,14 @@ import (
 const boosterContract string = "0xf403c135812408bfbe8713b5a23a04b3d48aae31"
 const boosterFeeManager string = "0xa3c5a1e09150b75ff251c1a7815a07182c3de2fb"
 
+var blockNumber string = "13858047"
+
 func Test_Hardhat(t *testing.T) {
 
 	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "mainnet")
 	testutil.Ok(t, err)
 
-	ln, err := New(log.NewNopLogger(), Hardhat, e.Nodes[0].URL, "13858047")
+	ln, err := New(log.NewNopLogger(), Hardhat, e.Nodes[0].URL, blockNumber)
 	testutil.Ok(t, err)
 	defer ln.Stop()
 
@@ -129,7 +131,7 @@ func Test_Foundry_Anvil(t *testing.T) {
 	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "mainnet")
 	testutil.Ok(t, err)
 
-	ln, err := New(log.NewNopLogger(), Anvil, e.Nodes[0].URL, "13858047")
+	ln, err := New(log.NewNopLogger(), Anvil, e.Nodes[0].URL, blockNumber)
 	testutil.Ok(t, err)
 	defer ln.Stop()
 

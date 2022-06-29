@@ -6,7 +6,6 @@ package localnode
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"math/big"
 	"os"
 	"os/exec"
@@ -72,7 +71,7 @@ type localNode struct {
 
 func New(logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber string) (*localNode, error) {
 	if forkNodeURL == "" {
-		return nil, fmt.Errorf("invalid forkNodeURL")
+		return nil, errors.Errorf("invalid forkNodeURL")
 	}
 
 	if nodeType == "" {
@@ -96,6 +95,10 @@ func New(logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber s
 		ln.cmd = fork(ln.logger, "npx", "hardhat", "node", "--fork", ln.forkNodeURL, "--fork-block-number", blockNumber)
 	case Anvil:
 		ln.cmd = fork(ln.logger, "anvil", "--fork-url", ln.forkNodeURL, "--fork-block-number", blockNumber)
+	}
+
+	if err := ln.SetNextBlockBaseFeePerGas(context.Background(), "0x0"); err != nil {
+		return nil, err
 	}
 
 	return ln, nil
@@ -169,6 +172,21 @@ func fork(logger log.Logger, args ...string) *exec.Cmd {
 	}
 
 	return cmd
+}
+
+func (ln *localNode) SetNextBlockBaseFeePerGas(ctx context.Context, blockBaseFee string) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
+	if err != nil {
+		return errors.Wrap(err, "creating rpc client")
+	}
+	defer rpcClient.Close()
+
+	callSetNextBlockBaseFeePerGas := string(ln.nodeType) + "_setNextBlockBaseFeePerGas"
+	if err = rpcClient.CallContext(ctx, nil, callSetNextBlockBaseFeePerGas, blockBaseFee); err != nil {
+		return errors.Wrap(err, "setNextBlockBaseFeePerGas")
+	}
+
+	return nil
 }
 
 func (ln *localNode) ReplaceContract(ctx context.Context, contractPath string, contractName string, contractAddrToReplace common.Address) error {
