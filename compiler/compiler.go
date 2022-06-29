@@ -36,7 +36,13 @@ func CompilerVersion(fileName string) (string, error) {
 			if strings.Contains(line, "pragma solidity") {
 				idxStart := strings.Index(line, "0")
 				idxEnd := strings.Index(line, ";")
-				return "v" + line[idxStart:idxEnd], nil
+
+				version := line[idxStart:idxEnd]
+				if len(version) == 3 {
+					version += ".0"
+				}
+
+				return "v" + version, nil
 			}
 		case ".vy":
 			if strings.Contains(line, "@version") {

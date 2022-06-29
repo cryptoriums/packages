@@ -5,6 +5,7 @@ package head
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bluele/gcache"
 	"github.com/ethereum/go-ethereum"
@@ -73,7 +74,8 @@ func (self *HeadSubscriberWithRedundancy) SubscribeNewHead(ctx context.Context, 
 		errSrc = append(errSrc, sub.Err())
 	}
 
-	multiSub := NewMultiSubscription(ctx, self.logger, subs, chSrc, chDst, errSrc)
+	logger := log.With(self.logger, "subscriptionID", fmt.Sprintf("%v", chDst))
+	multiSub := NewMultiSubscription(ctx, logger, subs, chSrc, chDst, errSrc)
 	return multiSub, nil
 }
 
