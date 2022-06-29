@@ -31,8 +31,13 @@ func Test_Hardhat(t *testing.T) {
 
 	ln, err := New(log.NewNopLogger(), Hardhat, e.Nodes[0].URL, blockNumber)
 	testutil.Ok(t, err)
-	defer ln.Stop()
-
+	
+	defer func() {
+		if err := ln.Stop(); err != nil {
+			testutil.Ok(t, err)
+		}
+	}()
+	
 	ctx := context.Background()
 
 	client, err := ethclient.DialContext(ctx, ln.GetNodeURL())
@@ -133,7 +138,12 @@ func Test_Foundry_Anvil(t *testing.T) {
 
 	ln, err := New(log.NewNopLogger(), Anvil, e.Nodes[0].URL, blockNumber)
 	testutil.Ok(t, err)
-	defer ln.Stop()
+
+	defer func() {
+		if err := ln.Stop(); err != nil {
+			testutil.Ok(t, err)
+		}
+	}()
 
 	ctx := context.Background()
 

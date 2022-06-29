@@ -104,23 +104,21 @@ func New(logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber s
 	return ln, nil
 }
 
-func (ln *localNode) Stop() {
+func (ln *localNode) Stop() error {
 	if ln.cmd == nil {
-		ln.logger.Log("no cmd")
-		os.Exit(1)
+		return errors.Errorf("no cmd found")
 	}
 
 	pgid, err := syscall.Getpgid(ln.cmd.Process.Pid)
 	if err != nil {
-		ln.logger.Log(err.Error())
-		os.Exit(1)
+		return errors.Wrap(err, "failed to get PID")
 	}
 
 	if err := syscall.Kill(-pgid, 9); err != nil {
-		ln.logger.Log(err.Error())
-		os.Exit(1)
+		return errors.Wrap(err, "failed to kill")
 	}
 
+	return nil
 }
 
 func (ln *localNode) GetAccounts() []tx_p.Account {
