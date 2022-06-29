@@ -1,7 +1,7 @@
 // Copyright (c) The Cryptorium Authors.
 // Licensed under the MIT License.
 
-package hardhat
+package localnode
 
 import (
 	"bufio"
@@ -27,11 +27,17 @@ import (
 	"github.com/pkg/errors"
 )
 
+type NodeType string
+
+var (
+	Hardhat NodeType = "hardhat"
+	Anvil   NodeType = "anvil"
+)
+
 const DefaultUrl = "ws://127.0.0.1:8545"
 
-var Accounts []tx_p.Account
-
-func init() {
+func initAccounts() []tx_p.Account {
+	var Accounts []tx_p.Account
 	for _, addr := range []string{
 		"0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
 		"0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
@@ -50,9 +56,80 @@ func init() {
 		}
 		Accounts = append(Accounts, acc)
 	}
+
+	return Accounts
 }
 
-func Fork(logger log.Logger, args ...string) *exec.Cmd {
+type localNode struct {
+	nodeType    NodeType
+	forkNodeURL string
+	nodeURL     string
+	cmd         *exec.Cmd
+	accounts    []tx_p.Account
+	logger      log.Logger
+}
+
+func New(logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber string) (*localNode, error) {
+	if forkNodeURL == "" {
+		return nil, errors.Errorf("invalid forkNodeURL")
+	}
+
+	if nodeType == "" {
+		nodeType = Hardhat
+	}
+
+	ln := &localNode{
+		nodeType:    nodeType,
+		forkNodeURL: forkNodeURL,
+		nodeURL:     DefaultUrl,
+		accounts:    initAccounts(),
+		logger:      logger,
+	}
+
+	if blockNumber == "" {
+		blockNumber = "latest"
+	}
+
+	switch ln.nodeType {
+	case Hardhat:
+		ln.cmd = fork(ln.logger, "npx", "hardhat", "node", "--fork", ln.forkNodeURL, "--fork-block-number", blockNumber)
+	case Anvil:
+		ln.cmd = fork(ln.logger, "anvil", "--fork-url", ln.forkNodeURL, "--fork-block-number", blockNumber)
+	}
+
+	if err := ln.SetNextBlockBaseFeePerGas(context.Background(), "0x0"); err != nil {
+		return nil, err
+	}
+
+	return ln, nil
+}
+
+func (ln *localNode) Stop() error {
+	if ln.cmd == nil {
+		return errors.Errorf("no cmd found")
+	}
+
+	pgid, err := syscall.Getpgid(ln.cmd.Process.Pid)
+	if err != nil {
+		return errors.Wrap(err, "failed to get PID")
+	}
+
+	if err := syscall.Kill(-pgid, 9); err != nil {
+		return errors.Wrap(err, "failed to kill")
+	}
+
+	return nil
+}
+
+func (ln *localNode) GetAccounts() []tx_p.Account {
+	return ln.accounts
+}
+
+func (ln *localNode) GetNodeURL() string {
+	return ln.nodeURL
+}
+
+func fork(logger log.Logger, args ...string) *exec.Cmd {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
@@ -95,8 +172,23 @@ func Fork(logger log.Logger, args ...string) *exec.Cmd {
 	return cmd
 }
 
-func ReplaceContract(ctx context.Context, nodeURL string, contractPath string, contractName string, contractAddrToReplace common.Address) error {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) SetNextBlockBaseFeePerGas(ctx context.Context, blockBaseFee string) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
+	if err != nil {
+		return errors.Wrap(err, "creating rpc client")
+	}
+	defer rpcClient.Close()
+
+	callSetNextBlockBaseFeePerGas := string(ln.nodeType) + "_setNextBlockBaseFeePerGas"
+	if err = rpcClient.CallContext(ctx, nil, callSetNextBlockBaseFeePerGas, blockBaseFee); err != nil {
+		return errors.Wrap(err, "setNextBlockBaseFeePerGas")
+	}
+
+	return nil
+}
+
+func (ln *localNode) ReplaceContract(ctx context.Context, contractPath string, contractName string, contractAddrToReplace common.Address) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -153,16 +245,17 @@ func ReplaceContract(ctx context.Context, nodeURL string, contractPath string, c
 		return errors.New("start index of runtime Bytecode not found in the generated binary file")
 	}
 
-	err = rpcClient.CallContext(ctx, nil, "hardhat_setCode", contractAddrToReplace, "0x"+bin[startDeployBin:])
+	callSetCode := string(ln.nodeType) + "_setCode"
+	err = rpcClient.CallContext(ctx, nil, callSetCode, contractAddrToReplace, "0x"+bin[startDeployBin:])
 	if err != nil {
-		return errors.Wrap(err, "hardhat_setCode call")
+		return errors.Wrapf(err, "%s", callSetCode)
 	}
 
 	return nil
 }
 
-func DisableAutoMine(ctx context.Context, nodeURL string) error {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) DisableAutoMine(ctx context.Context) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -176,8 +269,8 @@ func DisableAutoMine(ctx context.Context, nodeURL string) error {
 	return nil
 }
 
-func Mine(ctx context.Context, nodeURL string) error {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) Mine(ctx context.Context) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -191,8 +284,8 @@ func Mine(ctx context.Context, nodeURL string) error {
 	return nil
 }
 
-func SetNextBlockTimestamp(ctx context.Context, nodeURL string, ts int64) error {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) SetNextBlockTimestamp(ctx context.Context, ts int64) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -206,16 +299,17 @@ func SetNextBlockTimestamp(ctx context.Context, nodeURL string, ts int64) error 
 	return nil
 }
 
-func TxWithImpersonateAccount(ctx context.Context, nodeURL string, from common.Address, to common.Address, abiJ string, funcName string, args ...interface{}) (string, error) {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) TxWithImpersonateAccount(ctx context.Context, from common.Address, to common.Address, abiJ string, funcName string, args ...interface{}) (string, error) {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return "", errors.Wrap(err, "creating rpc client")
 	}
 	defer rpcClient.Close()
 
-	err = rpcClient.CallContext(ctx, nil, "hardhat_impersonateAccount", from)
+	callImpersonateAccount := string(ln.nodeType) + "_impersonateAccount"
+	err = rpcClient.CallContext(ctx, nil, callImpersonateAccount, from)
 	if err != nil {
-		return "", errors.Wrap(err, "calling hardhat_impersonateAccount")
+		return "", errors.Wrapf(err, "calling %s", callImpersonateAccount)
 	}
 
 	abiParsed, err := abi.JSON(strings.NewReader(abiJ))
@@ -237,39 +331,44 @@ func TxWithImpersonateAccount(ctx context.Context, nodeURL string, from common.A
 		return "", errors.Wrap(err, "calling eth_sendTransaction")
 	}
 
-	err = rpcClient.CallContext(ctx, nil, "hardhat_stopImpersonatingAccount", from)
+	callStopImpersonatingAccount := string(ln.nodeType) + "_stopImpersonatingAccount"
+	err = rpcClient.CallContext(ctx, nil, callStopImpersonatingAccount, from)
 	if err != nil {
-		return "", errors.Wrap(err, "calling hardhat_stopImpersonatingAccount")
+		return "", errors.Wrapf(err, "calling %s", callStopImpersonatingAccount)
 	}
 
 	return txHash, nil
 }
 
-func SetBalance(ctx context.Context, nodeURL string, of common.Address, amnt *big.Int) error {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) SetBalance(ctx context.Context, of common.Address, amnt *big.Int) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
 	defer rpcClient.Close()
 
-	err = rpcClient.CallContext(ctx, nil, "hardhat_setBalance", of, hexutil.EncodeBig(amnt))
+	callSetBalance := string(ln.nodeType) + "_setBalance"
+
+	err = rpcClient.CallContext(ctx, nil, callSetBalance, of, hexutil.EncodeBig(amnt))
 	if err != nil {
-		return errors.Wrap(err, "calling hardhat_setBalance")
+		return errors.Wrapf(err, "calling %s", callSetBalance)
 	}
 
 	return nil
 }
 
-func SetStorageAt(ctx context.Context, nodeURL string, addr common.Address, idx string, val string) error {
-	rpcClient, err := rpc.DialContext(ctx, nodeURL)
+func (ln *localNode) SetStorageAt(ctx context.Context, addr common.Address, idx string, val string) error {
+	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
 	defer rpcClient.Close()
 
-	err = rpcClient.CallContext(ctx, nil, "hardhat_setStorageAt", addr.Hex(), idx, val)
+	callSetStorageAt := string(ln.nodeType) + "_setStorageAt"
+
+	err = rpcClient.CallContext(ctx, nil, callSetStorageAt, addr.Hex(), idx, val)
 	if err != nil {
-		return errors.Wrap(err, "calling hardhat_setStorageAt")
+		return errors.Wrapf(err, "calling %s", callSetStorageAt)
 	}
 
 	return nil
