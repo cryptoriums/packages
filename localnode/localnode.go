@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	ethlogger "github.com/ethereum/go-ethereum/eth/tracers/logger"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/go-kit/log"
@@ -334,6 +335,29 @@ func (self *localNode) SetNextBlockTimestamp(ctx context.Context, ts int64) erro
 	}
 
 	return nil
+}
+
+func (self *localNode) DebugTraceTransaction(ctx context.Context, hash common.Hash) (*ethlogger.ExecutionResult, error) {
+	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating rpc client")
+	}
+	defer rpcClient.Close()
+
+	opts := struct {
+		DisableMemory  bool `json:"disableMemory"`
+		DisableStack   bool `json:"disableStack"`
+		DisableStorage bool `json:"disableStorage"`
+	}{}
+
+	result := &ethlogger.ExecutionResult{}
+
+	err = rpcClient.CallContext(ctx, result, "debug_traceTransaction", hash.Hex(), opts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "calling %s", "debug_traceTransaction")
+	}
+
+	return result, nil
 }
 
 func (self *localNode) TxWithImpersonateAccountWithData(ctx context.Context, from common.Address, to common.Address, data []byte) (string, error) {
