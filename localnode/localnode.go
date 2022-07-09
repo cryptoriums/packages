@@ -63,7 +63,6 @@ func initAccounts() []tx_p.Account {
 type localNode struct {
 	nodeType    NodeType
 	forkNodeURL string
-	nodeURL     string
 	cmd         *exec.Cmd
 	accounts    []tx_p.Account
 	logger      log.Logger
@@ -81,7 +80,6 @@ func New(ctx context.Context, logger log.Logger, nodeType NodeType, forkNodeURL 
 	ln := &localNode{
 		nodeType:    nodeType,
 		forkNodeURL: forkNodeURL,
-		nodeURL:     DefaultUrl,
 		accounts:    initAccounts(),
 		logger:      logger,
 	}
@@ -130,7 +128,7 @@ func (self *localNode) GetAccounts() []tx_p.Account {
 }
 
 func (self *localNode) GetNodeURL() string {
-	return self.nodeURL
+	return DefaultUrl
 }
 
 func fork(logger log.Logger, args ...string) *exec.Cmd {
@@ -176,26 +174,26 @@ func fork(logger log.Logger, args ...string) *exec.Cmd {
 	return cmd
 }
 
-func (self *localNode) Reset(ctx context.Context, blockNum *int) error {
-	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
+func (self *localNode) Reset(ctx context.Context, blockNum uint64) error {
+	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
 	defer rpcClient.Close()
 
-	if blockNum != nil {
+	if blockNum != 0 {
 		opts := struct {
 			Forking struct {
 				JsonRpcUrl  string `json:"jsonRpcUrl"`
-				BlockNumber int    `json:"blockNumber"`
+				BlockNumber uint64 `json:"blockNumber"`
 			} `json:"forking"`
 		}{
 			struct {
 				JsonRpcUrl  string `json:"jsonRpcUrl"`
-				BlockNumber int    `json:"blockNumber"`
+				BlockNumber uint64 `json:"blockNumber"`
 			}{
-				JsonRpcUrl:  self.nodeURL,
-				BlockNumber: *blockNum,
+				JsonRpcUrl:  self.forkNodeURL,
+				BlockNumber: blockNum,
 			},
 		}
 		if err = rpcClient.CallContext(ctx, nil, string(self.nodeType)+"_reset", opts); err != nil {
@@ -212,7 +210,7 @@ func (self *localNode) Reset(ctx context.Context, blockNum *int) error {
 }
 
 func (self *localNode) SetNextBlockBaseFeePerGas(ctx context.Context, blockBaseFee string) error {
-	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
+	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -227,7 +225,7 @@ func (self *localNode) SetNextBlockBaseFeePerGas(ctx context.Context, blockBaseF
 }
 
 func (self *localNode) ReplaceContract(ctx context.Context, contractPath string, contractName string, contractAddrToReplace common.Address) error {
-	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
+	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -294,7 +292,7 @@ func (self *localNode) ReplaceContract(ctx context.Context, contractPath string,
 }
 
 func (self *localNode) DisableAutoMine(ctx context.Context) error {
-	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
+	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -309,7 +307,7 @@ func (self *localNode) DisableAutoMine(ctx context.Context) error {
 }
 
 func (self *localNode) Mine(ctx context.Context) error {
-	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
+	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -324,7 +322,7 @@ func (self *localNode) Mine(ctx context.Context) error {
 }
 
 func (self *localNode) SetNextBlockTimestamp(ctx context.Context, ts int64) error {
-	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
+	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -339,7 +337,7 @@ func (self *localNode) SetNextBlockTimestamp(ctx context.Context, ts int64) erro
 }
 
 func (self *localNode) TxWithImpersonateAccountWithData(ctx context.Context, from common.Address, to common.Address, data []byte) (string, error) {
-	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
+	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return "", errors.Wrap(err, "creating rpc client")
 	}
@@ -372,7 +370,7 @@ func (self *localNode) TxWithImpersonateAccountWithData(ctx context.Context, fro
 }
 
 func (self *localNode) TxWithImpersonateAccount(ctx context.Context, from common.Address, to common.Address, abiJ string, funcName string, args ...interface{}) (string, error) {
-	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
+	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return "", errors.Wrap(err, "creating rpc client")
 	}
@@ -396,7 +394,7 @@ func (self *localNode) TxWithImpersonateAccount(ctx context.Context, from common
 }
 
 func (self *localNode) SetBalance(ctx context.Context, of common.Address, amnt *big.Int) error {
-	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
+	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -413,7 +411,7 @@ func (self *localNode) SetBalance(ctx context.Context, of common.Address, amnt *
 }
 
 func (self *localNode) SetStorageAt(ctx context.Context, addr common.Address, idx string, val string) error {
-	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
+	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}

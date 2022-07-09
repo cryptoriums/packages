@@ -23,14 +23,14 @@ import (
 const boosterContract string = "0xf403c135812408bfbe8713b5a23a04b3d48aae31"
 const boosterFeeManager string = "0xa3c5a1e09150b75ff251c1a7815a07182c3de2fb"
 
-var blockNumber = 13858047
+var blockNumber = uint64(13858047)
 
 func Test_Hardhat(t *testing.T) {
 	ctx := context.Background()
 	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "http")
 	testutil.Ok(t, err)
 
-	ln, err := New(ctx, log.NewNopLogger(), Hardhat, e.Nodes[0].URL, strconv.Itoa(blockNumber))
+	ln, err := New(ctx, log.NewNopLogger(), Hardhat, e.Nodes[0].URL, strconv.Itoa(int(blockNumber)))
 	testutil.Ok(t, err)
 
 	defer func() {
@@ -42,8 +42,30 @@ func Test_Hardhat(t *testing.T) {
 	client, err := ethclient.DialContext(ctx, ln.GetNodeURL())
 	testutil.Ok(t, err)
 
-	t.Run("ReplaceContract", func(t *testing.T) {
+	t.Run("MineAndReset", func(t *testing.T) {
+		initialBlock, err := client.BlockNumber(ctx)
+		testutil.Ok(t, err)
 
+		testutil.Equals(t, initialBlock, uint64(blockNumber))
+
+		err = ln.Mine(ctx)
+		testutil.Ok(t, err)
+		err = ln.Mine(ctx)
+		testutil.Ok(t, err)
+
+		blockAfterMine, err := client.BlockNumber(ctx)
+		testutil.Ok(t, err)
+		testutil.Equals(t, initialBlock+2, blockAfterMine)
+
+		blockToResetExp := blockAfterMine - 1
+		err = ln.Reset(ctx, blockToResetExp)
+		testutil.Ok(t, err)
+		blockAfterResetAct, err := client.BlockNumber(ctx)
+		testutil.Ok(t, err)
+		testutil.Equals(t, blockToResetExp, blockAfterResetAct)
+	})
+
+	t.Run("ReplaceContract", func(t *testing.T) {
 		err = ln.ReplaceContract(
 			ctx,
 			"../testing/contracts/source/Booster.sol",
@@ -70,22 +92,6 @@ func Test_Hardhat(t *testing.T) {
 		newAct, err := client.BalanceAt(ctx, from, nil)
 		testutil.Ok(t, err)
 		testutil.Equals(t, newBalance, newAct)
-	})
-
-	t.Run("Mine", func(t *testing.T) {
-
-		blockBefore, err := client.BlockByNumber(ctx, big.NewInt(13858047))
-		testutil.Ok(t, err)
-
-		testutil.Equals(t, "13858047", blockBefore.Number().String())
-
-		err = ln.Mine(ctx)
-		testutil.Ok(t, err)
-
-		blockAfter, err := client.BlockByNumber(ctx, nil)
-		testutil.Ok(t, err)
-
-		testutil.Equals(t, "13858048", blockAfter.Number().String())
 	})
 
 	t.Run("ImpersonateAccountReplaceContract", func(t *testing.T) {
@@ -126,7 +132,7 @@ func Test_Hardhat(t *testing.T) {
 		testutil.Ok(t, err)
 		testutil.Equals(t, newFeeManager, addrAct)
 
-		// Revert the owner with ImpersonateAccountWithData without ABI parsing.
+		// Revert the fee manager with ImpersonateAccountWithData without ABI parsing.
 		_, err = ln.TxWithImpersonateAccountWithData(
 			ctx,
 			newFeeManager,
@@ -148,7 +154,7 @@ func Test_Foundry_Anvil(t *testing.T) {
 	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "http")
 	testutil.Ok(t, err)
 
-	ln, err := New(ctx, log.NewNopLogger(), Anvil, e.Nodes[0].URL, strconv.Itoa(blockNumber))
+	ln, err := New(ctx, log.NewNopLogger(), Anvil, e.Nodes[0].URL, strconv.Itoa(int(blockNumber)))
 	testutil.Ok(t, err)
 
 	defer func() {
@@ -159,6 +165,29 @@ func Test_Foundry_Anvil(t *testing.T) {
 
 	client, err := ethclient.DialContext(ctx, ln.GetNodeURL())
 	testutil.Ok(t, err)
+
+	t.Run("MineAndReset", func(t *testing.T) {
+		initialBlock, err := client.BlockNumber(ctx)
+		testutil.Ok(t, err)
+
+		testutil.Equals(t, initialBlock, uint64(blockNumber))
+
+		err = ln.Mine(ctx)
+		testutil.Ok(t, err)
+		err = ln.Mine(ctx)
+		testutil.Ok(t, err)
+
+		blockAfterMine, err := client.BlockNumber(ctx)
+		testutil.Ok(t, err)
+		testutil.Equals(t, initialBlock+2, blockAfterMine)
+
+		blockToResetExp := blockAfterMine - 1
+		err = ln.Reset(ctx, blockToResetExp)
+		testutil.Ok(t, err)
+		blockAfterResetAct, err := client.BlockNumber(ctx)
+		testutil.Ok(t, err)
+		testutil.Equals(t, blockToResetExp, blockAfterResetAct)
+	})
 
 	t.Run("ReplaceContract", func(t *testing.T) {
 
@@ -188,22 +217,6 @@ func Test_Foundry_Anvil(t *testing.T) {
 		newAct, err := client.BalanceAt(ctx, from, nil)
 		testutil.Ok(t, err)
 		testutil.Equals(t, newBalance, newAct)
-	})
-
-	t.Run("Mine", func(t *testing.T) {
-
-		blockBefore, err := client.BlockByNumber(ctx, big.NewInt(13858047))
-		testutil.Ok(t, err)
-
-		testutil.Equals(t, "13858047", blockBefore.Number().String())
-
-		err = ln.Mine(ctx)
-		testutil.Ok(t, err)
-
-		blockAfter, err := client.BlockByNumber(ctx, nil)
-		testutil.Ok(t, err)
-
-		testutil.Equals(t, "13858048", blockAfter.Number().String())
 	})
 
 	t.Run("ImpersonateAccountReplaceContract", func(t *testing.T) {
@@ -245,7 +258,7 @@ func Test_Foundry_Anvil(t *testing.T) {
 
 		testutil.Equals(t, newFeeManager, addrAct)
 
-		// Revert the owner with ImpersonateAccountWithData without ABI parsing.
+		// Revert the fee manager with ImpersonateAccountWithData without ABI parsing.
 		_, err = ln.TxWithImpersonateAccountWithData(
 			ctx,
 			newFeeManager,
