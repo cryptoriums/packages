@@ -6,6 +6,7 @@ package localnode
 import (
 	"context"
 	"math/big"
+	"strconv"
 	"testing"
 
 	big_p "github.com/cryptoriums/packages/big"
@@ -22,23 +23,21 @@ import (
 const boosterContract string = "0xf403c135812408bfbe8713b5a23a04b3d48aae31"
 const boosterFeeManager string = "0xa3c5a1e09150b75ff251c1a7815a07182c3de2fb"
 
-var blockNumber string = "13858047"
+var blockNumber = 13858047
 
 func Test_Hardhat(t *testing.T) {
-
-	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "mainnet")
+	ctx := context.Background()
+	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "http")
 	testutil.Ok(t, err)
 
-	ln, err := New(log.NewNopLogger(), Hardhat, e.Nodes[0].URL, blockNumber)
+	ln, err := New(ctx, log.NewNopLogger(), Hardhat, e.Nodes[0].URL, strconv.Itoa(blockNumber))
 	testutil.Ok(t, err)
-	
+
 	defer func() {
 		if err := ln.Stop(); err != nil {
 			testutil.Ok(t, err)
 		}
 	}()
-	
-	ctx := context.Background()
 
 	client, err := ethclient.DialContext(ctx, ln.GetNodeURL())
 	testutil.Ok(t, err)
@@ -90,7 +89,7 @@ func Test_Hardhat(t *testing.T) {
 	})
 
 	t.Run("ImpersonateAccountReplaceContract", func(t *testing.T) {
-		from := common.HexToAddress(boosterFeeManager)
+		initialManager := common.HexToAddress(boosterFeeManager)
 		to := common.HexToAddress(boosterContract)
 		newFeeManager := ln.GetAccounts()[0].PublicKey
 
@@ -100,22 +99,22 @@ func Test_Hardhat(t *testing.T) {
 		addrFeeMngr, err := boosterInstance.FeeManager(&bind.CallOpts{Context: ctx})
 		testutil.Ok(t, err)
 
-		testutil.Equals(t, from, addrFeeMngr)
+		testutil.Equals(t, initialManager, addrFeeMngr)
 
 		// Set some balance of the account which will run the impersonated TX.
 		{
 			newBalance := big_p.FloatToBigIntMul(1000, params.Ether)
-			err = ln.SetBalance(ctx, from, newBalance)
+			err = ln.SetBalance(ctx, initialManager, newBalance)
 			testutil.Ok(t, err)
 
-			newAct, err := client.BalanceAt(ctx, from, nil)
+			newAct, err := client.BalanceAt(ctx, initialManager, nil)
 			testutil.Ok(t, err)
 			testutil.Equals(t, newBalance, newAct)
 		}
 
 		_, err = ln.TxWithImpersonateAccount(
 			ctx,
-			from,
+			initialManager,
 			to,
 			booster.BoosterABI,
 			"setFeeManager",
@@ -125,18 +124,31 @@ func Test_Hardhat(t *testing.T) {
 
 		addrAct, err := boosterInstance.FeeManager(&bind.CallOpts{Context: ctx})
 		testutil.Ok(t, err)
-
 		testutil.Equals(t, newFeeManager, addrAct)
-	})
 
+		// Revert the owner with ImpersonateAccountWithData without ABI parsing.
+		_, err = ln.TxWithImpersonateAccountWithData(
+			ctx,
+			newFeeManager,
+			to,
+			common.Hex2Bytes("472d35b9000000000000000000000000a3c5a1e09150b75ff251c1a7815a07182c3de2fb"),
+		)
+		testutil.Ok(t, err)
+
+		addrAct, err = boosterInstance.FeeManager(&bind.CallOpts{Context: ctx})
+		testutil.Ok(t, err)
+
+		testutil.Equals(t, initialManager, addrAct)
+	})
 }
 
 func Test_Foundry_Anvil(t *testing.T) {
+	ctx := context.Background()
 
-	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "mainnet")
+	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "http")
 	testutil.Ok(t, err)
 
-	ln, err := New(log.NewNopLogger(), Anvil, e.Nodes[0].URL, blockNumber)
+	ln, err := New(ctx, log.NewNopLogger(), Anvil, e.Nodes[0].URL, strconv.Itoa(blockNumber))
 	testutil.Ok(t, err)
 
 	defer func() {
@@ -144,8 +156,6 @@ func Test_Foundry_Anvil(t *testing.T) {
 			testutil.Ok(t, err)
 		}
 	}()
-
-	ctx := context.Background()
 
 	client, err := ethclient.DialContext(ctx, ln.GetNodeURL())
 	testutil.Ok(t, err)
@@ -197,7 +207,7 @@ func Test_Foundry_Anvil(t *testing.T) {
 	})
 
 	t.Run("ImpersonateAccountReplaceContract", func(t *testing.T) {
-		from := common.HexToAddress(boosterFeeManager)
+		initialManager := common.HexToAddress(boosterFeeManager)
 		to := common.HexToAddress(boosterContract)
 		newFeeManager := ln.GetAccounts()[0].PublicKey
 
@@ -207,22 +217,22 @@ func Test_Foundry_Anvil(t *testing.T) {
 		addrFeeMngr, err := boosterInstance.FeeManager(&bind.CallOpts{Context: ctx})
 		testutil.Ok(t, err)
 
-		testutil.Equals(t, from, addrFeeMngr)
+		testutil.Equals(t, initialManager, addrFeeMngr)
 
 		// Set some balance of the account which will run the impersonated TX.
 		{
 			newBalance := big_p.FloatToBigIntMul(1000, params.Ether)
-			err = ln.SetBalance(ctx, from, newBalance)
+			err = ln.SetBalance(ctx, initialManager, newBalance)
 			testutil.Ok(t, err)
 
-			newAct, err := client.BalanceAt(ctx, from, nil)
+			newAct, err := client.BalanceAt(ctx, initialManager, nil)
 			testutil.Ok(t, err)
 			testutil.Equals(t, newBalance, newAct)
 		}
 
 		_, err = ln.TxWithImpersonateAccount(
 			ctx,
-			from,
+			initialManager,
 			to,
 			booster.BoosterABI,
 			"setFeeManager",
@@ -234,6 +244,20 @@ func Test_Foundry_Anvil(t *testing.T) {
 		testutil.Ok(t, err)
 
 		testutil.Equals(t, newFeeManager, addrAct)
+
+		// Revert the owner with ImpersonateAccountWithData without ABI parsing.
+		_, err = ln.TxWithImpersonateAccountWithData(
+			ctx,
+			newFeeManager,
+			to,
+			common.Hex2Bytes("472d35b9000000000000000000000000a3c5a1e09150b75ff251c1a7815a07182c3de2fb"),
+		)
+		testutil.Ok(t, err)
+
+		addrAct, err = boosterInstance.FeeManager(&bind.CallOpts{Context: ctx})
+		testutil.Ok(t, err)
+
+		testutil.Equals(t, initialManager, addrAct)
 	})
 
 }

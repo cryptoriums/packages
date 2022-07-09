@@ -69,7 +69,7 @@ type localNode struct {
 	logger      log.Logger
 }
 
-func New(logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber string) (*localNode, error) {
+func New(ctx context.Context, logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber string) (*localNode, error) {
 	if forkNodeURL == "" {
 		return nil, errors.Errorf("invalid forkNodeURL")
 	}
@@ -86,30 +86,34 @@ func New(logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber s
 		logger:      logger,
 	}
 
-	if blockNumber == "" {
-		blockNumber = "latest"
-	}
+	var args []string
 
 	switch ln.nodeType {
 	case Hardhat:
-		ln.cmd = fork(ln.logger, "npx", "hardhat", "node", "--fork", ln.forkNodeURL, "--fork-block-number", blockNumber)
+		args = append(args, "npx", "hardhat", "node", "--fork", ln.forkNodeURL)
 	case Anvil:
-		ln.cmd = fork(ln.logger, "anvil", "--fork-url", ln.forkNodeURL, "--fork-block-number", blockNumber)
+		args = append(args, "anvil", "--fork-url", ln.forkNodeURL)
 	}
 
-	if err := ln.SetNextBlockBaseFeePerGas(context.Background(), "0x0"); err != nil {
+	if blockNumber != "" {
+		args = append(args, "--fork-block-number", blockNumber)
+	}
+
+	ln.cmd = fork(ln.logger, args...)
+
+	if err := ln.SetNextBlockBaseFeePerGas(ctx, "0x0"); err != nil {
 		return nil, err
 	}
 
 	return ln, nil
 }
 
-func (ln *localNode) Stop() error {
-	if ln.cmd == nil {
+func (self *localNode) Stop() error {
+	if self.cmd == nil {
 		return errors.Errorf("no cmd found")
 	}
 
-	pgid, err := syscall.Getpgid(ln.cmd.Process.Pid)
+	pgid, err := syscall.Getpgid(self.cmd.Process.Pid)
 	if err != nil {
 		return errors.Wrap(err, "failed to get PID")
 	}
@@ -121,12 +125,12 @@ func (ln *localNode) Stop() error {
 	return nil
 }
 
-func (ln *localNode) GetAccounts() []tx_p.Account {
-	return ln.accounts
+func (self *localNode) GetAccounts() []tx_p.Account {
+	return self.accounts
 }
 
-func (ln *localNode) GetNodeURL() string {
-	return ln.nodeURL
+func (self *localNode) GetNodeURL() string {
+	return self.nodeURL
 }
 
 func fork(logger log.Logger, args ...string) *exec.Cmd {
@@ -172,14 +176,49 @@ func fork(logger log.Logger, args ...string) *exec.Cmd {
 	return cmd
 }
 
-func (ln *localNode) SetNextBlockBaseFeePerGas(ctx context.Context, blockBaseFee string) error {
-	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
+func (self *localNode) Reset(ctx context.Context, blockNum *int) error {
+	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
 	defer rpcClient.Close()
 
-	callSetNextBlockBaseFeePerGas := string(ln.nodeType) + "_setNextBlockBaseFeePerGas"
+	if blockNum != nil {
+		opts := struct {
+			Forking struct {
+				JsonRpcUrl  string `json:"jsonRpcUrl"`
+				BlockNumber int    `json:"blockNumber"`
+			} `json:"forking"`
+		}{
+			struct {
+				JsonRpcUrl  string `json:"jsonRpcUrl"`
+				BlockNumber int    `json:"blockNumber"`
+			}{
+				JsonRpcUrl:  self.nodeURL,
+				BlockNumber: *blockNum,
+			},
+		}
+		if err = rpcClient.CallContext(ctx, nil, string(self.nodeType)+"_reset", opts); err != nil {
+			return errors.Wrap(err, "_reset")
+		}
+		return nil
+	}
+
+	if err = rpcClient.CallContext(ctx, nil, string(self.nodeType)+"_reset"); err != nil {
+		return errors.Wrap(err, "_reset")
+	}
+
+	return nil
+}
+
+func (self *localNode) SetNextBlockBaseFeePerGas(ctx context.Context, blockBaseFee string) error {
+	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
+	if err != nil {
+		return errors.Wrap(err, "creating rpc client")
+	}
+	defer rpcClient.Close()
+
+	callSetNextBlockBaseFeePerGas := string(self.nodeType) + "_setNextBlockBaseFeePerGas"
 	if err = rpcClient.CallContext(ctx, nil, callSetNextBlockBaseFeePerGas, blockBaseFee); err != nil {
 		return errors.Wrap(err, "setNextBlockBaseFeePerGas")
 	}
@@ -187,8 +226,8 @@ func (ln *localNode) SetNextBlockBaseFeePerGas(ctx context.Context, blockBaseFee
 	return nil
 }
 
-func (ln *localNode) ReplaceContract(ctx context.Context, contractPath string, contractName string, contractAddrToReplace common.Address) error {
-	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
+func (self *localNode) ReplaceContract(ctx context.Context, contractPath string, contractName string, contractAddrToReplace common.Address) error {
+	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -245,7 +284,7 @@ func (ln *localNode) ReplaceContract(ctx context.Context, contractPath string, c
 		return errors.New("start index of runtime Bytecode not found in the generated binary file")
 	}
 
-	callSetCode := string(ln.nodeType) + "_setCode"
+	callSetCode := string(self.nodeType) + "_setCode"
 	err = rpcClient.CallContext(ctx, nil, callSetCode, contractAddrToReplace, "0x"+bin[startDeployBin:])
 	if err != nil {
 		return errors.Wrapf(err, "%s", callSetCode)
@@ -254,8 +293,8 @@ func (ln *localNode) ReplaceContract(ctx context.Context, contractPath string, c
 	return nil
 }
 
-func (ln *localNode) DisableAutoMine(ctx context.Context) error {
-	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
+func (self *localNode) DisableAutoMine(ctx context.Context) error {
+	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -269,8 +308,8 @@ func (ln *localNode) DisableAutoMine(ctx context.Context) error {
 	return nil
 }
 
-func (ln *localNode) Mine(ctx context.Context) error {
-	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
+func (self *localNode) Mine(ctx context.Context) error {
+	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -284,8 +323,8 @@ func (ln *localNode) Mine(ctx context.Context) error {
 	return nil
 }
 
-func (ln *localNode) SetNextBlockTimestamp(ctx context.Context, ts int64) error {
-	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
+func (self *localNode) SetNextBlockTimestamp(ctx context.Context, ts int64) error {
+	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
@@ -299,14 +338,47 @@ func (ln *localNode) SetNextBlockTimestamp(ctx context.Context, ts int64) error 
 	return nil
 }
 
-func (ln *localNode) TxWithImpersonateAccount(ctx context.Context, from common.Address, to common.Address, abiJ string, funcName string, args ...interface{}) (string, error) {
-	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
+func (self *localNode) TxWithImpersonateAccountWithData(ctx context.Context, from common.Address, to common.Address, data []byte) (string, error) {
+	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
 	if err != nil {
 		return "", errors.Wrap(err, "creating rpc client")
 	}
 	defer rpcClient.Close()
 
-	callImpersonateAccount := string(ln.nodeType) + "_impersonateAccount"
+	callImpersonateAccount := string(self.nodeType) + "_impersonateAccount"
+	err = rpcClient.CallContext(ctx, nil, callImpersonateAccount, from)
+	if err != nil {
+		return "", errors.Wrapf(err, "calling %s", callImpersonateAccount)
+	}
+
+	optsT := tx_p.SendTransactionOpts{
+		From: from,
+		To:   to,
+		Data: hexutil.Encode(data),
+	}
+	var txHash string
+	err = rpcClient.CallContext(ctx, &txHash, "eth_sendTransaction", optsT)
+	if err != nil {
+		return "", errors.Wrap(err, "calling eth_sendTransaction")
+	}
+
+	callStopImpersonatingAccount := string(self.nodeType) + "_stopImpersonatingAccount"
+	err = rpcClient.CallContext(ctx, nil, callStopImpersonatingAccount, from)
+	if err != nil {
+		return "", errors.Wrapf(err, "calling %s", callStopImpersonatingAccount)
+	}
+
+	return txHash, nil
+}
+
+func (self *localNode) TxWithImpersonateAccount(ctx context.Context, from common.Address, to common.Address, abiJ string, funcName string, args ...interface{}) (string, error) {
+	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
+	if err != nil {
+		return "", errors.Wrap(err, "creating rpc client")
+	}
+	defer rpcClient.Close()
+
+	callImpersonateAccount := string(self.nodeType) + "_impersonateAccount"
 	err = rpcClient.CallContext(ctx, nil, callImpersonateAccount, from)
 	if err != nil {
 		return "", errors.Wrapf(err, "calling %s", callImpersonateAccount)
@@ -320,34 +392,17 @@ func (ln *localNode) TxWithImpersonateAccount(ctx context.Context, from common.A
 	if err != nil {
 		return "", errors.Wrap(err, "packing the args")
 	}
-	optsT := tx_p.SendTransactionOpts{
-		From: from,
-		To:   to,
-		Data: hexutil.Encode(data),
-	}
-	var txHash string
-	err = rpcClient.CallContext(ctx, &txHash, "eth_sendTransaction", optsT)
-	if err != nil {
-		return "", errors.Wrap(err, "calling eth_sendTransaction")
-	}
-
-	callStopImpersonatingAccount := string(ln.nodeType) + "_stopImpersonatingAccount"
-	err = rpcClient.CallContext(ctx, nil, callStopImpersonatingAccount, from)
-	if err != nil {
-		return "", errors.Wrapf(err, "calling %s", callStopImpersonatingAccount)
-	}
-
-	return txHash, nil
+	return self.TxWithImpersonateAccountWithData(ctx, from, to, data)
 }
 
-func (ln *localNode) SetBalance(ctx context.Context, of common.Address, amnt *big.Int) error {
-	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
+func (self *localNode) SetBalance(ctx context.Context, of common.Address, amnt *big.Int) error {
+	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
 	defer rpcClient.Close()
 
-	callSetBalance := string(ln.nodeType) + "_setBalance"
+	callSetBalance := string(self.nodeType) + "_setBalance"
 
 	err = rpcClient.CallContext(ctx, nil, callSetBalance, of, hexutil.EncodeBig(amnt))
 	if err != nil {
@@ -357,14 +412,14 @@ func (ln *localNode) SetBalance(ctx context.Context, of common.Address, amnt *bi
 	return nil
 }
 
-func (ln *localNode) SetStorageAt(ctx context.Context, addr common.Address, idx string, val string) error {
-	rpcClient, err := rpc.DialContext(ctx, ln.nodeURL)
+func (self *localNode) SetStorageAt(ctx context.Context, addr common.Address, idx string, val string) error {
+	rpcClient, err := rpc.DialContext(ctx, self.nodeURL)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
 	}
 	defer rpcClient.Close()
 
-	callSetStorageAt := string(ln.nodeType) + "_setStorageAt"
+	callSetStorageAt := string(self.nodeType) + "_setStorageAt"
 
 	err = rpcClient.CallContext(ctx, nil, callSetStorageAt, addr.Hex(), idx, val)
 	if err != nil {
