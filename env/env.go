@@ -89,9 +89,11 @@ func IsEncrypted(_input string) bool {
 	return _input[0] == EncryptIndicator[0]
 }
 
+var ErrNotEncrypted = errors.Errorf("input is not encrypted")
+
 func Decrypt(_input string, pass string) (string, error) {
 	if !IsEncrypted(_input) {
-		return "", errors.Errorf("input is not encrypted")
+		return "", ErrNotEncrypted
 	}
 	input, err := hex.DecodeString(_input[1:])
 	if err != nil {
@@ -447,6 +449,9 @@ func DecryptWithPasswordLoop(input string) (string, string, error) {
 
 		output, err := Decrypt(input, pass)
 		if err != nil {
+			if err == ErrNotEncrypted {
+				return "", "", err
+			}
 			fmt.Println("decrypt input error:", err)
 			continue
 		}
@@ -608,6 +613,11 @@ func SelectAccount(accounts []Account, print bool, msg string) (Account, error) 
 			if acc.Pub.Hex() == common.HexToAddress(accAddr).Hex() {
 				return acc, nil
 			}
+		}
+
+		confirmed, err := prompt.Stdin.PromptConfirm(fmt.Sprintf("receiver:%v not found in env file, are you sure you want to use?", accAddr))
+		if err == nil && confirmed {
+			return Account{Pub: common.HexToAddress(accAddr)}, nil
 		}
 
 		fmt.Println("account not found, try again:", accAddr)
