@@ -61,7 +61,7 @@ func initAccounts() []tx_p.Account {
 	return Accounts
 }
 
-type localNode struct {
+type LocalNode struct {
 	nodeType    NodeType
 	forkNodeURL string
 	cmd         *exec.Cmd
@@ -69,7 +69,7 @@ type localNode struct {
 	logger      log.Logger
 }
 
-func New(ctx context.Context, logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber string) (*localNode, error) {
+func New(ctx context.Context, logger log.Logger, nodeType NodeType, forkNodeURL string, blockNumber string) (*LocalNode, error) {
 	if forkNodeURL == "" {
 		return nil, errors.Errorf("invalid forkNodeURL")
 	}
@@ -78,7 +78,7 @@ func New(ctx context.Context, logger log.Logger, nodeType NodeType, forkNodeURL 
 		nodeType = Hardhat
 	}
 
-	ln := &localNode{
+	ln := &LocalNode{
 		nodeType:    nodeType,
 		forkNodeURL: forkNodeURL,
 		accounts:    initAccounts(),
@@ -107,7 +107,7 @@ func New(ctx context.Context, logger log.Logger, nodeType NodeType, forkNodeURL 
 	return ln, nil
 }
 
-func (self *localNode) Stop() error {
+func (self *LocalNode) Stop() error {
 	if self.cmd == nil {
 		return errors.Errorf("no cmd found")
 	}
@@ -124,11 +124,11 @@ func (self *localNode) Stop() error {
 	return nil
 }
 
-func (self *localNode) GetAccounts() []tx_p.Account {
+func (self *LocalNode) GetAccounts() []tx_p.Account {
 	return self.accounts
 }
 
-func (self *localNode) GetNodeURL() string {
+func (self *LocalNode) GetNodeURL() string {
 	return DefaultUrl
 }
 
@@ -175,7 +175,7 @@ func fork(logger log.Logger, args ...string) *exec.Cmd {
 	return cmd
 }
 
-func (self *localNode) Reset(ctx context.Context, blockNum uint64) error {
+func (self *LocalNode) Reset(ctx context.Context, blockNum uint64) error {
 	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
@@ -210,7 +210,7 @@ func (self *localNode) Reset(ctx context.Context, blockNum uint64) error {
 	return nil
 }
 
-func (self *localNode) SetNextBlockBaseFeePerGas(ctx context.Context, blockBaseFee string) error {
+func (self *LocalNode) SetNextBlockBaseFeePerGas(ctx context.Context, blockBaseFee string) error {
 	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
@@ -225,7 +225,7 @@ func (self *localNode) SetNextBlockBaseFeePerGas(ctx context.Context, blockBaseF
 	return nil
 }
 
-func (self *localNode) ReplaceContract(ctx context.Context, contractPath string, contractName string, contractAddrToReplace common.Address) error {
+func (self *LocalNode) ReplaceContract(ctx context.Context, contractPath string, contractName string, contractAddrToReplace common.Address) error {
 	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
@@ -292,7 +292,7 @@ func (self *localNode) ReplaceContract(ctx context.Context, contractPath string,
 	return nil
 }
 
-func (self *localNode) DisableAutoMine(ctx context.Context) error {
+func (self *LocalNode) DisableAutoMine(ctx context.Context) error {
 	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
@@ -307,7 +307,7 @@ func (self *localNode) DisableAutoMine(ctx context.Context) error {
 	return nil
 }
 
-func (self *localNode) Mine(ctx context.Context) error {
+func (self *LocalNode) Mine(ctx context.Context) error {
 	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
@@ -322,7 +322,7 @@ func (self *localNode) Mine(ctx context.Context) error {
 	return nil
 }
 
-func (self *localNode) SetNextBlockTimestamp(ctx context.Context, ts int64) error {
+func (self *LocalNode) SetNextBlockTimestamp(ctx context.Context, ts int64) error {
 	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
@@ -337,7 +337,7 @@ func (self *localNode) SetNextBlockTimestamp(ctx context.Context, ts int64) erro
 	return nil
 }
 
-func (self *localNode) DebugTraceTransaction(ctx context.Context, hash common.Hash) (*ethlogger.ExecutionResult, error) {
+func (self *LocalNode) DebugTraceTransaction(ctx context.Context, hash common.Hash) (*ethlogger.ExecutionResult, error) {
 	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating rpc client")
@@ -360,7 +360,7 @@ func (self *localNode) DebugTraceTransaction(ctx context.Context, hash common.Ha
 	return result, nil
 }
 
-func (self *localNode) TxWithImpersonateAccountWithData(ctx context.Context, from common.Address, to common.Address, data []byte) (string, error) {
+func (self *LocalNode) TxWithImpersonateAccountWithData(ctx context.Context, from common.Address, to common.Address, data []byte) (string, error) {
 	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return "", errors.Wrap(err, "creating rpc client")
@@ -393,7 +393,7 @@ func (self *localNode) TxWithImpersonateAccountWithData(ctx context.Context, fro
 	return txHash, nil
 }
 
-func (self *localNode) TxWithImpersonateAccount(ctx context.Context, from common.Address, to common.Address, abiJ string, funcName string, args ...interface{}) (string, error) {
+func (self *LocalNode) TxWithImpersonateAccount(ctx context.Context, from common.Address, to common.Address, abiJ string, funcName string, args ...interface{}) (string, error) {
 	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return "", errors.Wrap(err, "creating rpc client")
@@ -417,7 +417,7 @@ func (self *localNode) TxWithImpersonateAccount(ctx context.Context, from common
 	return self.TxWithImpersonateAccountWithData(ctx, from, to, data)
 }
 
-func (self *localNode) SetBalance(ctx context.Context, of common.Address, amnt *big.Int) error {
+func (self *LocalNode) SetBalance(ctx context.Context, of common.Address, amnt *big.Int) error {
 	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
@@ -434,7 +434,7 @@ func (self *localNode) SetBalance(ctx context.Context, of common.Address, amnt *
 	return nil
 }
 
-func (self *localNode) SetStorageAt(ctx context.Context, addr common.Address, idx string, val string) error {
+func (self *LocalNode) SetStorageAt(ctx context.Context, addr common.Address, idx string, val string) error {
 	rpcClient, err := rpc.DialContext(ctx, DefaultUrl)
 	if err != nil {
 		return errors.Wrap(err, "creating rpc client")
