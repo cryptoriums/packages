@@ -615,7 +615,7 @@ func SelectAccount(accounts []Account, print bool, msg string) (Account, error) 
 			}
 		}
 
-		confirmed, err := prompt.Stdin.PromptConfirm(fmt.Sprintf("receiver:%v not found in env file, are you sure you want to use?", accAddr))
+		confirmed, err := prompt.Stdin.PromptConfirm(fmt.Sprintf("account:%v not found in env file, are you sure you want to use?", accAddr))
 		if err == nil && confirmed {
 			return Account{Pub: common.HexToAddress(accAddr)}, nil
 		}
