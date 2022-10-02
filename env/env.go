@@ -578,13 +578,15 @@ var TOKENS = []Token{
 			5:     {},
 			56:    {},
 			31337: {},
+			10001: {},
 		},
 	},
 	{
 		"TRB",
 		map[int64]common.Address{
-			1: common.HexToAddress("0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0"),
-			4: common.HexToAddress("0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0"),
+			1:     common.HexToAddress("0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0"),
+			4:     common.HexToAddress("0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0"),
+			10001: common.HexToAddress("0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0"),
 		},
 	},
 }
