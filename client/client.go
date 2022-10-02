@@ -54,10 +54,6 @@ type Config struct {
 	LogLevel string
 }
 
-type ClientWithRetry struct {
-	logger log.Logger
-	nodes  []string
-
 type node struct {
 	nodeUrl   string
 	ethClient *ethclient.Client
