@@ -7,7 +7,7 @@ import "time"
 
 const (
 	TxGasOverHead      = 21_000
-	BlockTime          = float64(15)
+	BlockTime          = float64(12)
 	BlocksPerSecond    = float64(1 / BlockTime)
 	BlocksPerMinute    = float64(60 / BlockTime)
 	ReorgEventWaitSafe = time.Minute
