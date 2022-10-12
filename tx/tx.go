@@ -87,12 +87,12 @@ func NewSignedTX(
 	tx, err := types.SignNewTx(prvKey, signer, &types.DynamicFeeTx{
 		ChainID:   big.NewInt(netID),
 		Nonce:     nonce,
-		GasFeeCap: big_p.FloatToBigIntMul(gasMaxFee, params.GWei),
-		GasTipCap: big_p.FloatToBigIntMul(gasTip, params.GWei),
+		GasFeeCap: big_p.FromFloatMul(gasMaxFee, params.GWei),
+		GasTipCap: big_p.FromFloatMul(gasTip, params.GWei),
 		Gas:       gasLimit,
 		To:        &to,
 		Data:      data,
-		Value:     big_p.FloatToBigIntMul(value, params.Ether),
+		Value:     big_p.FromFloatMul(value, params.Ether),
 	})
 	if err != nil {
 		return nil, "", errors.Wrap(err, "sign transaction")
@@ -119,10 +119,10 @@ func NewTxOpts(
 	var gasMaxTipWei *big.Int
 	var err error
 	if gasMaxFee > 0 {
-		gasMaxFeeWei = big_p.FloatToBigIntMul(gasMaxFee, params.GWei)
+		gasMaxFeeWei = big_p.FromFloatMul(gasMaxFee, params.GWei)
 	}
 	if gasMaxTip > 0 {
-		gasMaxTipWei = big_p.FloatToBigIntMul(gasMaxTip, params.GWei)
+		gasMaxTipWei = big_p.FromFloatMul(gasMaxTip, params.GWei)
 	}
 
 	if gasMaxFee > constants.MaxGasPriceGwei || gasMaxTip > constants.MaxGasPriceGwei {

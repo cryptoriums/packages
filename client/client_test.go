@@ -82,18 +82,17 @@ func TestNodeDenote(t *testing.T) {
 			return
 		}
 
-		fmt.Println("1", m.Method)
-
 		switch m.Method {
 		case "net_version":
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"1"}`)
+			_, err = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"1"}`)
 		case "eth_gasPrice":
 			w.WriteHeader(http.StatusBadRequest)
 		case "eth_getBalance":
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"0x2"}`)
+			_, err = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"0x2"}`)
 		case "eth_blockNumber":
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"0x9999"}`)
+			_, err = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"0x9999"}`)
 		}
+		testutil.Ok(t, err)
 
 	}))
 	defer svr1.Close()
@@ -106,18 +105,17 @@ func TestNodeDenote(t *testing.T) {
 			return
 		}
 
-		fmt.Println("2", m.Method)
-
 		switch m.Method {
 		case "net_version":
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"1"}`)
+			_, err = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"1"}`)
 		case "eth_gasPrice":
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"0x3"}`)
+			_, err = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"0x3"}`)
 		case "eth_getBalance":
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"0x4"}`)
+			_, err = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"0x4"}`)
 		case "eth_blockNumber":
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"0x6"}`)
+			_, err = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"0x6"}`)
 		}
+		testutil.Ok(t, err)
 	}))
 	defer svr2.Close()
 

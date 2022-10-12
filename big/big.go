@@ -50,13 +50,13 @@ func MulWad(a, b *big.Int) *big.Int {
 	return result
 }
 
-func BigIntToFloat(input *big.Int) float64 {
+func ToFloat(input *big.Int) float64 {
 	fl, _ := big.NewFloat(0).SetInt(input).Float64()
 	return fl
 }
 
-func BigIntToFloatDiv(input *big.Int, devider float64) float64 {
-	fl := BigIntToFloat(input)
+func ToFloatDiv(input *big.Int, devider float64) float64 {
+	fl := ToFloat(input)
 	if devider == 1 {
 		return fl
 	}
@@ -67,7 +67,7 @@ func BigIntToFloatDiv(input *big.Int, devider float64) float64 {
 	return f
 }
 
-func FloatToBigIntMul(input float64, multiplier float64) *big.Int {
+func FromFloatMul(input float64, multiplier float64) *big.Int {
 	if input == 0 {
 		return big.NewInt(0)
 	}
@@ -76,7 +76,7 @@ func FloatToBigIntMul(input float64, multiplier float64) *big.Int {
 	return result
 }
 
-func FloatToBigInt(input float64) *big.Int {
+func FromFloat(input float64) *big.Int {
 	result, _ := big.NewFloat(input).Int(nil)
 	return result
 }

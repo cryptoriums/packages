@@ -86,7 +86,7 @@ func TestMulWad(t *testing.T) {
 	}
 }
 
-func TestFloatToBigIntMul(t *testing.T) {
+func TestFromFloatMul(t *testing.T) {
 	type testcase struct {
 		input      float64
 		multiplier float64
@@ -132,7 +132,7 @@ func TestFloatToBigIntMul(t *testing.T) {
 	}
 
 	for i, tc := range cases {
-		act := FloatToBigIntMul(tc.input, tc.multiplier)
+		act := FromFloatMul(tc.input, tc.multiplier)
 		exp, ok := big.NewInt(0).SetString(fmt.Sprintf("%.0f", tc.expected), 10)
 		testutil.Assert(t, ok, "failed to convert string to big int")
 
@@ -140,7 +140,7 @@ func TestFloatToBigIntMul(t *testing.T) {
 	}
 }
 
-func TestBigIntToFloatDiv(t *testing.T) {
+func TestToFloatDiv(t *testing.T) {
 	type testcase struct {
 		input    float64
 		devider  float64
@@ -179,7 +179,7 @@ func TestBigIntToFloatDiv(t *testing.T) {
 		input, ok := big.NewInt(0).SetString(fmt.Sprintf("%.0f", tc.input), 10)
 		testutil.Assert(t, ok, "failed to convert string to big int")
 
-		act := BigIntToFloatDiv(input, tc.devider)
+		act := ToFloatDiv(input, tc.devider)
 		testutil.Equals(t, tc.expected, act, "Case:"+strconv.Itoa(i))
 	}
 }

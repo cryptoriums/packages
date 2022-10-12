@@ -85,7 +85,7 @@ func Test_Hardhat(t *testing.T) {
 
 	t.Run("SetBalance", func(t *testing.T) {
 		from := ln.GetAccounts()[0].PublicKey
-		newBalance := big_p.FloatToBigIntMul(1000, params.Ether)
+		newBalance := big_p.FromFloatMul(1000, params.Ether)
 		err = ln.SetBalance(ctx, from, newBalance)
 		testutil.Ok(t, err)
 
@@ -109,7 +109,7 @@ func Test_Hardhat(t *testing.T) {
 
 		// Set some balance of the account which will run the impersonated TX.
 		{
-			newBalance := big_p.FloatToBigIntMul(1000, params.Ether)
+			newBalance := big_p.FromFloatMul(1000, params.Ether)
 			err = ln.SetBalance(ctx, initialManager, newBalance)
 			testutil.Ok(t, err)
 
@@ -210,7 +210,7 @@ func Test_Foundry_Anvil(t *testing.T) {
 
 	t.Run("SetBalance", func(t *testing.T) {
 		from := ln.GetAccounts()[0].PublicKey
-		newBalance := big_p.FloatToBigIntMul(1000, params.Ether)
+		newBalance := big_p.FromFloatMul(1000, params.Ether)
 		err = ln.SetBalance(ctx, from, newBalance)
 		testutil.Ok(t, err)
 
@@ -234,7 +234,7 @@ func Test_Foundry_Anvil(t *testing.T) {
 
 		// Set some balance of the account which will run the impersonated TX.
 		{
-			newBalance := big_p.FloatToBigIntMul(1000, params.Ether)
+			newBalance := big_p.FromFloatMul(1000, params.Ether)
 			err = ln.SetBalance(ctx, initialManager, newBalance)
 			testutil.Ok(t, err)
 
