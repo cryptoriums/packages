@@ -149,6 +149,96 @@ func Test_Hardhat(t *testing.T) {
 	})
 }
 
+func TestHeadSubscriber(t *testing.T) {
+	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "http")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		nodeType NodeType
+	}{
+		{
+			nodeType: Hardhat,
+		},
+		{
+			nodeType: Anvil,
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(string(tC.nodeType), func(t *testing.T) {
+			ctx, cncl := context.WithCancel(context.Background())
+			defer cncl()
+
+			ln, err := New(ctx, log.NewNopLogger(), tC.nodeType, e.Nodes[0].URL, strconv.Itoa(int(blockNumber)))
+			require.NoError(t, err)
+
+			defer func() {
+				if err := ln.Stop(); err != nil {
+					require.NoError(t, err)
+				}
+			}()
+
+			client, err := ethclient.DialContext(ctx, DefaultUrl)
+			require.NoError(t, err)
+			netID, err := client.NetworkID(ctx)
+			require.NoError(t, err)
+
+			chBlocksRecieve := make(chan *types.Header)
+			subs, err := client.SubscribeNewHead(ctx, chBlocksRecieve)
+			doneMining := make(chan struct{})
+			txCreateCount := 10
+			blocksRecieved := 0
+
+			nonce, err := client.NonceAt(ctx, ln.GetAccounts()[0].PublicKey, nil)
+			require.NoError(t, err)
+			from := ln.GetAccounts()[0].PrivateKey
+			to := ln.GetAccounts()[1].PublicKey
+
+			go func() {
+				for {
+					select {
+					case err := <-subs.Err():
+						t.Logf("subsciption returned an error:%v", err)
+						return
+					case <-chBlocksRecieve:
+						blocksRecieved++
+						t.Logf("total blocks recieved:%v", blocksRecieved)
+					case <-ctx.Done():
+						return
+					}
+				}
+			}()
+
+			go func() {
+				for i := 1; i <= txCreateCount; i++ {
+					tx, err := types.SignNewTx(
+						from,
+						types.LatestSignerForChainID(netID),
+						&types.DynamicFeeTx{
+							ChainID:   netID,
+							Nonce:     nonce,
+							GasFeeCap: big_p.FromFloat(1),
+							GasTipCap: big_p.FromFloat(1),
+							Gas:       40_000,
+							To:        &to,
+							Data:      nil,
+							Value:     big_p.FromFloat(1e18),
+						})
+					require.NoError(t, err)
+					require.NoError(t, client.SendTransaction(ctx, tx))
+					t.Logf("sent tx:%v", i)
+
+					nonce++
+				}
+				doneMining <- struct{}{}
+			}()
+
+			<-doneMining
+			cncl()
+			require.Equal(t, txCreateCount, blocksRecieved)
+		})
+	}
+}
+
 func Test_Foundry_Anvil(t *testing.T) {
 	ctx := context.Background()
 
