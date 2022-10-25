@@ -22,9 +22,6 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 	"github.com/pmezard/go-difflib/difflib"
-	"github.com/prometheus/client_golang/prometheus"
-	dto "github.com/prometheus/client_model/go"
-	"github.com/prometheus/prometheus/model/labels"
 	"go.uber.org/goleak"
 )
 
@@ -234,52 +231,6 @@ func GetSimBackend(t *testing.T, sk *ecdsa.PrivateKey) *backends.SimulatedBacken
 	}
 	alloc := core.GenesisAlloc(addr)
 	return backends.NewSimulatedBackend(alloc, 80000000)
-}
-
-func ToFloat64(c prometheus.Collector, labelsToMatch ...labels.Label) float64 {
-	var (
-		m     prometheus.Metric
-		mChan = make(chan prometheus.Metric)
-		done  = make(chan struct{})
-	)
-
-	pb := &dto.Metric{}
-	go func() {
-	Main:
-		for m = range mChan {
-			_pb := &dto.Metric{}
-			if err := m.Write(_pb); err != nil {
-				panic(errors.Wrap(err, "writing into the dto metric"))
-			}
-
-			if len(labelsToMatch) == 0 {
-				pb = _pb
-				continue Main
-			}
-			for i, l := range labelsToMatch {
-				if *_pb.Label[i].Name != l.Name || *_pb.Label[i].Value != l.Value {
-					continue Main
-				}
-			}
-			pb = _pb
-		}
-		close(done)
-	}()
-
-	c.Collect(mChan)
-	close(mChan)
-	<-done
-
-	if pb.Gauge != nil {
-		return pb.Gauge.GetValue()
-	}
-	if pb.Counter != nil {
-		return pb.Counter.GetValue()
-	}
-	if pb.Untyped != nil {
-		return pb.Untyped.GetValue()
-	}
-	panic(fmt.Errorf("collected a non-gauge/counter/untyped metric: %s", pb))
 }
 
 func SkipCI(t *testing.T) {
