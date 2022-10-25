@@ -98,11 +98,20 @@ func (self *TrackerHead) listen(src chan *types.Header) {
 
 			level.Debug(logger).Log("msg", "new block")
 			if self.reorgWaitPeriod == 0 {
-				select {
-				case self.dstChan <- types.NewBlock(event, nil, nil, nil, nil):
-				case <-self.ctx.Done():
-					return
-				}
+				go func(event *types.Header) {
+					ctx, cncl := context.WithTimeout(self.ctx, time.Minute)
+					defer cncl()
+					block, err := self.client.BlockByNumber(ctx, event.Number)
+					if err != nil {
+						level.Error(logger).Log("msg", "getting full block from head hash", "err", err, "num", event.Number, "hash", event.Hash())
+						return
+					}
+					select {
+					case self.dstChan <- block:
+					case <-self.ctx.Done():
+						return
+					}
+				}(event)
 				continue
 			}
 
