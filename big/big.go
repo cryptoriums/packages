@@ -4,6 +4,7 @@
 package big
 
 import (
+	"fmt"
 	"math/big"
 )
 
@@ -71,12 +72,17 @@ func FromFloatMul(input float64, multiplier float64) *big.Int {
 	if input == 0 {
 		return big.NewInt(0)
 	}
-	bigE18 := big.NewFloat(0).Mul(big.NewFloat(input), big.NewFloat(multiplier))
-	result, _ := bigE18.Int(nil)
+	fl := fromFloat(input)
+	fl = big.NewFloat(0).Mul(fl, big.NewFloat(multiplier))
+	result, _ := fl.Int(nil)
 	return result
 }
 
-func FromFloat(input float64) *big.Int {
-	result, _ := big.NewFloat(input).Int(nil)
-	return result
+func fromFloat(input float64) *big.Float {
+	_input := fmt.Sprintf("%.50f", input)
+	fl, ok := big.NewFloat(0).SetString(_input)
+	if !ok {
+		panic("setting big floa from string:" + _input)
+	}
+	return fl
 }

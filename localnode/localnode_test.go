@@ -216,12 +216,12 @@ func TestHeadSubscriber(t *testing.T) {
 						&types.DynamicFeeTx{
 							ChainID:   netID,
 							Nonce:     nonce,
-							GasFeeCap: big_p.FromFloat(1),
-							GasTipCap: big_p.FromFloat(1),
+							GasFeeCap: big.NewInt(1),
+							GasTipCap: big.NewInt(1),
 							Gas:       40_000,
 							To:        &to,
 							Data:      nil,
-							Value:     big_p.FromFloat(1e18),
+							Value:     big.NewInt(1e18),
 						})
 					require.NoError(t, err)
 					require.NoError(t, client.SendTransaction(ctx, tx))

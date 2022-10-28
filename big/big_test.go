@@ -129,13 +129,23 @@ func TestFromFloatMul(t *testing.T) {
 			params.GWei,
 			params.GWei / 10,
 		},
+		{ // Some extremely large number shouldn't loose precision.
+			8272739999999999549999999,
+			1,
+			8272739999999999549999999,
+		},
+		{ // Some extremely small number shouldn't loose precision.
+			0.0000000000000000000000001234,
+			1e28,
+			1234,
+		},
 	}
 
 	for i, tc := range cases {
-		act := FromFloatMul(tc.input, tc.multiplier)
 		exp, ok := big.NewInt(0).SetString(fmt.Sprintf("%.0f", tc.expected), 10)
 		testutil.Assert(t, ok, "failed to convert string to big int")
 
+		act := FromFloatMul(tc.input, tc.multiplier)
 		testutil.Equals(t, exp, act, "Case:"+strconv.Itoa(i))
 	}
 }
