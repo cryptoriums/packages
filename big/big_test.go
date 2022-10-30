@@ -139,6 +139,11 @@ func TestFromFloatMul(t *testing.T) {
 			1e28,
 			1234,
 		},
+		{ // Some realistic eth price.
+			1296.890000,
+			1e18,
+			1296890000000000196608, // For some reason there is some precision loss?
+		},
 	}
 
 	for i, tc := range cases {

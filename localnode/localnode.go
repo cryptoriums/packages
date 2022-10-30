@@ -312,6 +312,15 @@ func (self *LocalNode) SetNextBlockTimestamp(ctx context.Context, ts int64) erro
 	return nil
 }
 
+func (self *LocalNode) IncreaseTime(ctx context.Context, seconds int64) error {
+	err := self.rpcClient.CallContext(ctx, nil, "evm_increaseTime", big.NewInt(seconds))
+	if err != nil {
+		return errors.Wrap(err, "calling evm_increaseTime")
+	}
+
+	return nil
+}
+
 func (self *LocalNode) DebugTraceTransaction(ctx context.Context, hash common.Hash) (*ethlogger.ExecutionResult, error) {
 	opts := struct {
 		DisableMemory  bool `json:"disableMemory"`
@@ -351,11 +360,6 @@ func (self *LocalNode) TxWithImpersonateAccountWithData(ctx context.Context, fro
 	err = self.rpcClient.CallContext(ctx, nil, callStopImpersonatingAccount, from)
 	if err != nil {
 		return nil, errors.Wrapf(err, "calling %s", callStopImpersonatingAccount)
-	}
-
-	if err := self.Mine(ctx); err != nil { // For some reason Anvil doesn't automine a block here.
-		return nil, errors.Wrapf(err, "calling Mine")
-
 	}
 
 	ethClient := ethclient.NewClient(self.rpcClient)
