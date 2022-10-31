@@ -586,6 +586,7 @@ var TOKENS = []Token{
 		map[int64]common.Address{
 			1:     common.HexToAddress("0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0"),
 			4:     common.HexToAddress("0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0"),
+			5:     common.HexToAddress("0x51c59c6cAd28ce3693977F2feB4CfAebec30d8a2"),
 			10001: common.HexToAddress("0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0"),
 		},
 	},

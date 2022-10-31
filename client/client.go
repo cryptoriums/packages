@@ -145,7 +145,7 @@ func (self *ClientWithRetry) CallContext(ctx context.Context, result interface{}
 		err := node.rpcClient.CallContext(ctx, result, method, args...)
 		if err != nil {
 			denoteNodeIdx = i
-			level.Error(self.logger).Log("msg", "rpc call", "node", node.nodeUrl, "err", err)
+			level.Error(self.logger).Log("msg", "rpc call", "node", node.nodeUrl, "method", method, "err", err)
 			merr = multierror.Append(merr, err)
 			continue
 		}
@@ -178,7 +178,7 @@ func (self *ClientWithRetry) CallContract(ctx context.Context, call ethereum.Cal
 			result, err := node.ethClient.CallContract(ctxRetry, call, blockNumber)
 			if err != nil {
 				denoteNodeIdx = i
-				level.Error(self.logger).Log("msg", "CallContract", "node", node.nodeUrl, "err", err)
+				level.Error(self.logger).Log("msg", "CallContract", "node", node.nodeUrl, "from", call.From, "to", call.To, "err", err)
 				continue
 			}
 			return result, nil
@@ -210,7 +210,7 @@ func (self *ClientWithRetry) TransactionByHash(ctx context.Context, hash common.
 			tx, isPending, err := node.ethClient.TransactionByHash(ctxRetry, hash)
 			if err != nil {
 				denoteNodeIdx = i
-				level.Error(self.logger).Log("msg", "TransactionByHash", "node", node.nodeUrl, "err", err)
+				level.Error(self.logger).Log("msg", "TransactionByHash", "node", node.nodeUrl, "tx", hash, "err", err)
 				continue
 			}
 			return tx, isPending, nil
@@ -242,7 +242,7 @@ func (self *ClientWithRetry) PendingNonceAt(ctx context.Context, account common.
 			result, err := node.ethClient.PendingNonceAt(ctxRetry, account)
 			if err != nil {
 				denoteNodeIdx = i
-				level.Error(self.logger).Log("msg", "PendingNonceAt", "node", node.nodeUrl, "err", err)
+				level.Error(self.logger).Log("msg", "PendingNonceAt", "node", node.nodeUrl, "account", account, "err", err)
 				continue
 			}
 			return result, nil
@@ -274,7 +274,7 @@ func (self *ClientWithRetry) BlockByNumber(ctx context.Context, number *big.Int)
 			result, err := node.ethClient.BlockByNumber(ctxRetry, number)
 			if err != nil {
 				denoteNodeIdx = i
-				level.Error(self.logger).Log("msg", "BlockByNumber", "node", node.nodeUrl, "err", err)
+				level.Error(self.logger).Log("msg", "BlockByNumber", "node", node.nodeUrl, "num", number.Int64(), "err", err)
 				continue
 			}
 			return result, nil
@@ -370,7 +370,7 @@ func (self *ClientWithRetry) PendingCodeAt(ctx context.Context, account common.A
 			result, err := node.ethClient.PendingCodeAt(ctxRetry, account)
 			if err != nil {
 				denoteNodeIdx = i
-				level.Error(self.logger).Log("msg", "PendingCodeAt", "node", node.nodeUrl, "err", err)
+				level.Error(self.logger).Log("msg", "PendingCodeAt", "node", node.nodeUrl, "account", account, "err", err)
 				continue
 			}
 			return result, nil
@@ -402,7 +402,7 @@ func (self *ClientWithRetry) EstimateGas(ctx context.Context, call ethereum.Call
 			result, err := node.ethClient.EstimateGas(ctxRetry, call)
 			if err != nil {
 				denoteNodeIdx = i
-				level.Error(self.logger).Log("msg", "EstimateGas", "node", node.nodeUrl, "err", err)
+				level.Error(self.logger).Log("msg", "EstimateGas", "node", node.nodeUrl, "from", call.From, "to", call.To, "err", err)
 				continue
 			}
 			return result, nil
@@ -434,7 +434,7 @@ func (self *ClientWithRetry) SendTransaction(ctx context.Context, tx *types.Tran
 			err := node.ethClient.SendTransaction(ctxRetry, tx)
 			if err != nil {
 				denoteNodeIdx = i
-				level.Error(self.logger).Log("msg", "SendTransaction", "node", node.nodeUrl, "err", err)
+				level.Error(self.logger).Log("msg", "SendTransaction", "node", node.nodeUrl, "to", tx.To(), "err", err)
 				continue
 			}
 			return nil
@@ -466,7 +466,7 @@ func (self *ClientWithRetry) BalanceAt(ctx context.Context, account common.Addre
 			result, err := node.ethClient.BalanceAt(ctxRetry, account, blockNumber)
 			if err != nil {
 				denoteNodeIdx = i
-				level.Error(self.logger).Log("msg", "BalanceAt", "node", node.nodeUrl, "err", err)
+				level.Error(self.logger).Log("msg", "BalanceAt", "node", node.nodeUrl, "account", account, "err", err)
 				continue
 			}
 			return result, nil
@@ -498,7 +498,7 @@ func (self *ClientWithRetry) HeaderByNumber(ctx context.Context, number *big.Int
 			result, err := node.ethClient.HeaderByNumber(ctxRetry, number)
 			if err != nil {
 				denoteNodeIdx = i
-				level.Error(self.logger).Log("msg", "HeaderByNumber", "node", node.nodeUrl, "err", err)
+				level.Error(self.logger).Log("msg", "HeaderByNumber", "node", node.nodeUrl, "num", number.Int64(), "err", err)
 				continue
 			}
 			return result, nil
