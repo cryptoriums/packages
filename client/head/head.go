@@ -46,9 +46,8 @@ type HeadSubscriberWithRedundancy struct {
 func IsCached(logger log.Logger, cache gcache.Cache, header *types.Header) bool {
 	hash := HashFromAllFields(header)
 	_, err := cache.Get(hash)
-
-	if err != gcache.KeyNotFoundError {
-		level.Debug(logger).Log("msg", "header is cached", "hash", hash, "err", err)
+	if err == nil {
+		level.Debug(logger).Log("msg", "header is cached", "hash", hash)
 		return true
 	}
 	return false
