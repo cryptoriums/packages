@@ -27,7 +27,6 @@ import (
 
 const (
 	ComponentName = "trackerEvent"
-	defaultDelay  = 10 * time.Second
 )
 
 type Config struct {
@@ -271,7 +270,7 @@ func (self *TrackerEvents) waitSubscribe() (chan types.Log, event.Subscription, 
 		case <-self.ctx.Done():
 			return nil, &NoopSubs{}, nil // To avoid panics in the caller.
 		case <-ticker.C:
-			resetTicker.Do(func() { ticker.Reset(defaultDelay) })
+			resetTicker.Do(func() { ticker.Reset(time.Second) })
 		}
 
 		q, err := self.createFilterQuery()

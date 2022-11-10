@@ -166,7 +166,7 @@ func NewTxOpts(
 	cost := new(big.Int)
 	cost.Mul(gasMaxFeeWei, big.NewInt(int64(gasLimit)))
 	if ethBalance.Cmp(cost) < 0 {
-		return nil, errors.Errorf("insufficient ethereum to send a transaction: %v < %v", ethBalance, cost)
+		return nil, errors.Errorf("insufficient ethereum to send a transaction: %v < %v account:%v", ethBalance, cost, account.PublicKey)
 	}
 
 	opts, err := bind.NewKeyedTransactorWithChainID(account.PrivateKey, big.NewInt(client.NetworkID()))

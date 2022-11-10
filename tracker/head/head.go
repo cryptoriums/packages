@@ -21,7 +21,6 @@ import (
 
 const (
 	ComponentName = "trackerHead"
-	defaultDelay  = 10 * time.Second
 )
 
 type Contract interface {
@@ -174,7 +173,7 @@ func (self *TrackerHead) waitSubscribe() (chan *types.Header, event.Subscription
 		case <-self.ctx.Done():
 			return nil, &NoopSubs{} // To avoid panics in the caller.
 		case <-ticker.C:
-			resetTicker.Do(func() { ticker.Reset(defaultDelay) })
+			resetTicker.Do(func() { ticker.Reset(time.Second) })
 		}
 
 		subs, err := self.client.SubscribeNewHead(self.ctx, output)
