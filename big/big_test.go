@@ -13,6 +13,59 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
+func TestAdd(t *testing.T) {
+	type testcase struct {
+		a   *big.Int
+		b   []*big.Int
+		exp *big.Int
+	}
+
+	cases := []testcase{
+		{
+			big.NewInt(0),
+			[]*big.Int{
+				big.NewInt(1e18),
+			},
+			big.NewInt(1e18),
+		},
+		{
+
+			big.NewInt(1e18),
+			[]*big.Int{
+				big.NewInt(1e18),
+			},
+			big.NewInt(2e18),
+		},
+		{
+
+			big.NewInt(1e18),
+			[]*big.Int{
+				big.NewInt(1e18),
+				big.NewInt(1e18),
+			},
+			big.NewInt(3e18),
+		},
+	}
+
+	for i, tc := range cases {
+		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
+			originalA := big.NewInt(0).SetBits(tc.a.Bits())
+
+			var originalB []*big.Int
+			for _, b := range tc.b {
+				originalB = append(originalB, big.NewInt(0).SetBits(b.Bits()))
+			}
+			testutil.Equals(t, tc.exp, Add(tc.a, tc.b...))
+
+			// Verify that the original numbers are not modified.
+			testutil.Equals(t, originalA, tc.a)
+			for i, b := range originalB {
+				testutil.Equals(t, b, tc.b[i])
+			}
+		})
+	}
+}
+
 func TestMulWad(t *testing.T) {
 	type testcase struct {
 		a   *big.Int

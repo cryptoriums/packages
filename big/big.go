@@ -13,8 +13,12 @@ var (
 	One = big.NewInt(1)
 )
 
-func Add(a, b *big.Int) *big.Int {
-	return big.NewInt(0).Add(a, b)
+func Add(a *big.Int, bb ...*big.Int) *big.Int {
+	final := big.NewInt(0).SetBits(a.Bits())
+	for _, b := range bb {
+		final.Add(final, b)
+	}
+	return final
 }
 
 func Sub(a, b *big.Int) *big.Int {
