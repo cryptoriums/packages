@@ -161,9 +161,9 @@ func TestHeadSubscriber(t *testing.T) {
 		{
 			nodeType: Hardhat,
 		},
-		// { TODO re-add when this is fixed https://github.com/foundry-rs/foundry/issues/3537
-		// 	nodeType: Anvil,
-		// },
+		{
+			nodeType: Anvil,
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(string(tC.nodeType), func(t *testing.T) {
