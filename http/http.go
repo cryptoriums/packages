@@ -6,7 +6,7 @@ package http
 import (
 	"context"
 	"crypto/tls"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -42,7 +42,7 @@ func Get(ctx context.Context, url string, headers map[string]string) ([]byte, er
 	}
 	defer r.Body.Close()
 
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "read response body")
 	}

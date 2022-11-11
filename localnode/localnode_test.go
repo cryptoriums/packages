@@ -7,7 +7,9 @@ import (
 	"context"
 	"math/big"
 	"strconv"
+	"sync"
 	"testing"
+	"time"
 
 	big_p "github.com/cryptoriums/packages/big"
 	"github.com/cryptoriums/packages/env"
@@ -159,9 +161,9 @@ func TestHeadSubscriber(t *testing.T) {
 		{
 			nodeType: Hardhat,
 		},
-		{
-			nodeType: Anvil,
-		},
+		// { TODO re-add when this is fixed https://github.com/foundry-rs/foundry/issues/3537
+		// 	nodeType: Anvil,
+		// },
 	}
 	for _, tC := range testCases {
 		t.Run(string(tC.nodeType), func(t *testing.T) {
@@ -184,14 +186,15 @@ func TestHeadSubscriber(t *testing.T) {
 
 			chBlocksRecieve := make(chan *types.Header)
 			subs, err := client.SubscribeNewHead(ctx, chBlocksRecieve)
+			require.NoError(t, err)
 			doneMining := make(chan struct{})
 			txCreateCount := 10
 			blocksRecieved := 0
 
-			nonce, err := client.NonceAt(ctx, ln.GetAccounts()[0].PublicKey, nil)
-			require.NoError(t, err)
 			from := ln.GetAccounts()[0].PrivateKey
 			to := ln.GetAccounts()[1].PublicKey
+
+			mtx := sync.Mutex{}
 
 			go func() {
 				for {
@@ -200,8 +203,10 @@ func TestHeadSubscriber(t *testing.T) {
 						t.Logf("subsciption returned an error:%v", err)
 						return
 					case <-chBlocksRecieve:
+						mtx.Lock()
 						blocksRecieved++
-						t.Logf("total blocks recieved:%v", blocksRecieved)
+						mtx.Unlock()
+						t.Logf("total blocks received:%v", blocksRecieved)
 					case <-ctx.Done():
 						return
 					}
@@ -209,6 +214,8 @@ func TestHeadSubscriber(t *testing.T) {
 			}()
 
 			go func() {
+				nonce, err := client.NonceAt(ctx, ln.GetAccounts()[0].PublicKey, nil)
+				require.NoError(t, err)
 				for i := 1; i <= txCreateCount; i++ {
 					tx, err := types.SignNewTx(
 						from,
@@ -233,6 +240,7 @@ func TestHeadSubscriber(t *testing.T) {
 			}()
 
 			<-doneMining
+			time.Sleep(time.Second)
 			cncl()
 			require.Equal(t, txCreateCount, blocksRecieved)
 		})

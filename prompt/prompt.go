@@ -6,7 +6,7 @@ package prompt
 import (
 	"context"
 	"fmt" //lint:ignore faillint for prompts it is better than logs.
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -86,7 +86,7 @@ func ReadFile() ([]byte, string, error) {
 			fmt.Println("getting file path from terminal:", err)
 			continue
 		}
-		content, err := ioutil.ReadFile(filePath)
+		content, err := os.ReadFile(filePath)
 		if err != nil {
 			fmt.Println(err)
 			continue

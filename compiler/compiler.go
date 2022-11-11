@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -130,7 +129,7 @@ func ExportABI(folder string, abis []string) error {
 	}
 
 	fpath := filepath.Join(folder, filename+".json")
-	if err := ioutil.WriteFile(fpath, a, os.ModePerm); err != nil {
+	if err := os.WriteFile(fpath, a, os.ModePerm); err != nil {
 		return errors.Wrapf(err, "write file:%v", fpath)
 	}
 
@@ -140,7 +139,7 @@ func ExportABI(folder string, abis []string) error {
 func ExportBin(folder string, types, bins []string) error {
 	for i, t := range types {
 		fpath := filepath.Join(folder, t+".bin")
-		if err := ioutil.WriteFile(fpath, []byte(bins[i]), os.ModePerm); err != nil {
+		if err := os.WriteFile(fpath, []byte(bins[i]), os.ModePerm); err != nil {
 			return errors.Wrapf(err, "write file:%v", fpath)
 		}
 	}
@@ -163,7 +162,7 @@ func ExportPackage(pkgFolder string, types []string, abis []string, bins []strin
 		return errors.Wrapf(err, "create destination folder:%v", pkgFolder)
 	}
 
-	if err := ioutil.WriteFile(pkgPath, []byte(code), os.ModePerm); err != nil {
+	if err := os.WriteFile(pkgPath, []byte(code), os.ModePerm); err != nil {
 		return errors.Wrapf(err, "write package file:%v", pkgPath)
 	}
 	return nil
