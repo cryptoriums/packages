@@ -45,11 +45,19 @@ func TestAdd(t *testing.T) {
 			},
 			big.NewInt(3e18),
 		},
+		{
+
+			big.NewInt(0).Mul(big.NewInt(2), big.NewInt(3)), // Weird bug that caused the original number to be modified.
+			[]*big.Int{
+				big.NewInt(21000),
+			},
+			big.NewInt(21006),
+		},
 	}
 
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
-			originalA := big.NewInt(0).SetBits(tc.a.Bits())
+			originalA := tc.a.String()
 
 			var originalB []*big.Int
 			for _, b := range tc.b {
@@ -58,7 +66,7 @@ func TestAdd(t *testing.T) {
 			testutil.Equals(t, tc.exp, Add(tc.a, tc.b...))
 
 			// Verify that the original numbers are not modified.
-			testutil.Equals(t, originalA, tc.a)
+			testutil.Equals(t, originalA, tc.a.String())
 			for i, b := range originalB {
 				testutil.Equals(t, b, tc.b[i])
 			}

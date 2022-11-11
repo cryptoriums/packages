@@ -14,7 +14,7 @@ var (
 )
 
 func Add(a *big.Int, bb ...*big.Int) *big.Int {
-	final := big.NewInt(0).SetBits(a.Bits())
+	final := big.NewInt(0).Set(a)
 	for _, b := range bb {
 		final.Add(final, b)
 	}
