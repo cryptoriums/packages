@@ -274,7 +274,7 @@ func (self *ClientWithRetry) BlockByNumber(ctx context.Context, number *big.Int)
 			result, err := node.ethClient.BlockByNumber(ctxRetry, number)
 			if err != nil {
 				denoteNodeIdx = i
-				level.Error(self.logger).Log("msg", "BlockByNumber", "node", node.nodeUrl, "num", number.Int64(), "err", err)
+				level.Error(self.logger).Log("msg", "BlockByNumber", "node", node.nodeUrl, "num", number, "err", err)
 				continue
 			}
 			return result, nil
@@ -498,7 +498,7 @@ func (self *ClientWithRetry) HeaderByNumber(ctx context.Context, number *big.Int
 			result, err := node.ethClient.HeaderByNumber(ctxRetry, number)
 			if err != nil {
 				denoteNodeIdx = i
-				level.Error(self.logger).Log("msg", "HeaderByNumber", "node", node.nodeUrl, "num", number.Int64(), "err", err)
+				level.Error(self.logger).Log("msg", "HeaderByNumber", "node", node.nodeUrl, "num", number, "err", err)
 				continue
 			}
 			return result, nil
