@@ -96,3 +96,10 @@ func fromFloat(input float64) *big.Float {
 	}
 	return fl
 }
+
+func ToBigFloatDiv(input *big.Int, devider int64) *big.Float {
+	if input == nil {
+		return big.NewFloat(0)
+	}
+	return new(big.Float).Quo(new(big.Float).SetInt(input), new(big.Float).SetInt(big.NewInt(devider)))
+}
