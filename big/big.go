@@ -56,11 +56,17 @@ func MulWad(a, b *big.Int) *big.Int {
 }
 
 func ToFloat(input *big.Int) float64 {
+	if input == nil {
+		return 0
+	}
 	fl, _ := big.NewFloat(0).SetInt(input).Float64()
 	return fl
 }
 
 func ToFloatDiv(input *big.Int, devider float64) float64 {
+	if input == nil {
+		return 0
+	}
 	fl := ToFloat(input)
 	if devider == 1 {
 		return fl
