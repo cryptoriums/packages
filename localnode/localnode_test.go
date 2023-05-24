@@ -242,7 +242,9 @@ func TestHeadSubscriber(t *testing.T) {
 			<-doneMining
 			time.Sleep(time.Second)
 			cncl()
+			mtx.Lock()
 			require.Equal(t, txCreateCount, blocksRecieved)
+			mtx.Unlock()
 		})
 	}
 }
