@@ -55,6 +55,15 @@ func MulWad(a, b *big.Int) *big.Int {
 	return result
 }
 
+// MulFloat multiplies a big.Int with a float64.
+func MulFloat(val *big.Int, multiplier float64) *big.Int {
+	multiplierBigFloat := new(big.Float).SetFloat64(multiplier) // Convert the multiplier to a big.Float
+	valBigFloat := new(big.Float).SetInt(val)                   // Convert the big.Int value to a big.Float
+	valBigFloat.Mul(valBigFloat, multiplierBigFloat)            // Multiply the big.Float value with the multiplier
+	valBigInt, _ := valBigFloat.Int(nil)                        // Convert the result back to big.Int
+	return valBigInt
+}
+
 func ToFloat(input *big.Int) float64 {
 	if input == nil {
 		return 0
