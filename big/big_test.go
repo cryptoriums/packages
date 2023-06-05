@@ -263,41 +263,46 @@ func TestToFloatDiv(t *testing.T) {
 
 func TestMulFloat(t *testing.T) {
 	testCases := []struct {
-		name        string
-		val         *big.Int
-		multiplier  float64
-		expectedVal *big.Int
+		name       string
+		input      *big.Int
+		multiplier float64
+		expected   *big.Int
 	}{
 		{
-			name:        "Case 1: Multiply 200 by 0.20",
-			val:         big.NewInt(200),
-			multiplier:  0.20,
-			expectedVal: big.NewInt(40),
+			name:       "Case 1: Multiply 200 by 0.20",
+			input:      big.NewInt(200),
+			multiplier: 0.20,
+			expected:   big.NewInt(40),
 		},
 		{
-			name:        "Case 2: Multiply 100 by 0.75",
-			val:         big.NewInt(100),
-			multiplier:  0.75,
-			expectedVal: big.NewInt(75),
+			name:       "Case 2: Multiply 100 by 0.75",
+			input:      big.NewInt(100),
+			multiplier: 0.75,
+			expected:   big.NewInt(75),
 		},
 		{
-			name:        "Case 3: Multiply 50 by 1.5",
-			val:         big.NewInt(50),
-			multiplier:  1.5,
-			expectedVal: big.NewInt(75),
+			name:       "Case 3: Multiply 50 by 1.5",
+			input:      big.NewInt(50),
+			multiplier: 1.5,
+			expected:   big.NewInt(75),
 		},
 		{
-			name:        "Case 1: Multiply 200 by 0.50",
-			val:         big.NewInt(200),
-			multiplier:  0.50,
-			expectedVal: big.NewInt(100),
+			name:       "Case 4: Multiply 200 by 0.50",
+			input:      big.NewInt(200),
+			multiplier: 0.50,
+			expected:   big.NewInt(100),
+		}, {
+			name:       "Case 5: Some rounding error",
+			input:      big.NewInt(100),
+			multiplier: 0.333,
+			expected:   big.NewInt(33),
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := MulFloat(tc.val, tc.multiplier)
-			require.Equal(t, tc.expectedVal, result, "The result of the multiplication should be equal to the expected result.")
+			result := MulFloat(tc.input, tc.multiplier)
+			require.Equal(t, tc.expected, result, "The result of the multiplication should be equal to the expected result.")
 		})
 	}
 }
