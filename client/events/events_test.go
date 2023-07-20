@@ -25,7 +25,6 @@ import (
 
 // TestLogsWithRedundancy ensures that events are deduplicated properly when using multiple backends.
 //
-//
 // Here is an example how to use with node urls.
 //
 // infura, err := ethclient.Dial("wss://infura.io/......")
