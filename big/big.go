@@ -112,3 +112,13 @@ func ToBigFloatDiv(input *big.Int, devider int64) *big.Float {
 	}
 	return new(big.Float).Quo(new(big.Float).SetInt(input), new(big.Float).SetInt(big.NewInt(devider)))
 }
+
+func Percentage(value *big.Int, percentage int32) *big.Int {
+	// Multiply the value by the percentage
+	result := new(big.Int).Mul(value, big.NewInt(int64(percentage)))
+
+	// Divide by 100
+	result = new(big.Int).Div(result, big.NewInt(100))
+
+	return result
+}

@@ -306,3 +306,46 @@ func TestMulFloat(t *testing.T) {
 		})
 	}
 }
+
+func TestPercentage(t *testing.T) {
+	type testcase struct {
+		value      *big.Int
+		percentage int32
+		exp        *big.Int
+	}
+
+	cases := []testcase{
+		{
+			value:      big.NewInt(100),
+			percentage: 10,
+			exp:        big.NewInt(10),
+		},
+		{
+			value:      big.NewInt(200),
+			percentage: 25,
+			exp:        big.NewInt(50),
+		},
+		{
+			value:      big.NewInt(333),
+			percentage: 33,
+			exp:        big.NewInt(109),
+		},
+		{
+			value:      big.NewInt(500),
+			percentage: 99,
+			exp:        big.NewInt(495),
+		},
+		{
+			value:      big.NewInt(100),
+			percentage: 99,
+			exp:        big.NewInt(99),
+		},
+	}
+
+	for i, tc := range cases {
+		t.Run("case_"+strconv.Itoa(i), func(t *testing.T) {
+			result := Percentage(tc.value, tc.percentage)
+			require.Equal(t, tc.exp, result)
+		})
+	}
+}
