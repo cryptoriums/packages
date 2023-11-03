@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cryptoriums/packages/testutil"
+	"github.com/stretchr/testify/require"
 )
 
 func FuzzEncryptDecrypt(f *testing.F) {
@@ -22,10 +22,10 @@ func FuzzEncryptDecrypt(f *testing.F) {
 	f.Fuzz(func(t *testing.T, input, pass string) {
 		input = strings.ReplaceAll(input, EncryptIndicator, "")
 		encr, err := Encrypt(input, pass)
-		testutil.Ok(t, err, input)
-		testutil.Assert(t, IsEncrypted(encr))
+		require.NoError(t, err, input)
+		require.True(t, IsEncrypted(encr))
 		decr, err := Decrypt(encr, pass)
-		testutil.Ok(t, err, input)
-		testutil.Equals(t, decr, input)
+		require.NoError(t, err, input)
+		require.Equal(t, decr, input)
 	})
 }

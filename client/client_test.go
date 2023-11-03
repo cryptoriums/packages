@@ -17,20 +17,20 @@ import (
 	"github.com/cryptoriums/packages/client"
 	"github.com/cryptoriums/packages/env"
 	"github.com/cryptoriums/packages/testing/contracts/bindings/gauge"
-	"github.com/cryptoriums/packages/testutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEthCall(t *testing.T) {
 	ctx := context.Background()
 
 	e, err := env.LoadFromEnvVarOrFile("env", "../env.json", "mainnet")
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	client, err := client.NewClientCachedNetID(ctx, log.NewNopLogger(), e.Nodes[0].URL)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	callOpts := &bind.CallOpts{
 		Context:     ctx,
@@ -38,7 +38,7 @@ func TestEthCall(t *testing.T) {
 	}
 
 	abi, err := gauge.GaugeMetaData.GetAbi()
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	stakerAddr := common.HexToAddress("0x989aeb4d175e16225e39e87d0d97a3360524ad80")
 	gaugeAddr := common.HexToAddress("0x7ca5b0a2910B33e9759DC7dDB0413949071D7575")
@@ -47,11 +47,11 @@ func TestEthCall(t *testing.T) {
 		new(*big.Int),
 	}
 	err = bind.NewBoundContract(gaugeAddr, *abi, client, client, client).Call(callOpts, &results, "claimable_tokens", stakerAddr)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	r := results[0].(**big.Int)
 
-	testutil.Equals(t, (*r).String(), "448222059400430463396")
+	require.Equal(t, (*r).String(), "448222059400430463396")
 
 }
 
@@ -92,7 +92,7 @@ func TestNodeDenote(t *testing.T) {
 		case "eth_blockNumber":
 			_, err = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"0x9999"}`)
 		}
-		testutil.Ok(t, err)
+		require.NoError(t, err)
 
 	}))
 	defer svr1.Close()
@@ -115,27 +115,27 @@ func TestNodeDenote(t *testing.T) {
 		case "eth_blockNumber":
 			_, err = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":"0x6"}`)
 		}
-		testutil.Ok(t, err)
+		require.NoError(t, err)
 	}))
 	defer svr2.Close()
 
 	clt, err := client.NewClientWithRetry(ctx, log.NewNopLogger(), client.Config{}, []string{svr1.URL, svr2.URL})
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	res, err := clt.BalanceAt(ctx, common.Address{}, nil)
-	testutil.Ok(t, err)
-	testutil.Equals(t, "2", res.String())
+	require.NoError(t, err)
+	require.Equal(t, "2", res.String())
 
 	res, err = clt.SuggestGasPrice(ctx)
-	testutil.Ok(t, err)
-	testutil.Equals(t, "3", res.String())
+	require.NoError(t, err)
+	require.Equal(t, "3", res.String())
 
 	res, err = clt.BalanceAt(ctx, common.Address{}, nil)
-	testutil.Ok(t, err)
-	testutil.Equals(t, "4", res.String())
+	require.NoError(t, err)
+	require.Equal(t, "4", res.String())
 
 	bNum, err := clt.BlockNumber(ctx)
-	testutil.Ok(t, err)
-	testutil.Equals(t, uint64(6), bNum)
+	require.NoError(t, err)
+	require.Equal(t, uint64(6), bNum)
 
 }

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cryptoriums/packages/testutil"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_ExpandTimeVars(t *testing.T) {
@@ -41,15 +41,15 @@ func Test_ExpandTimeVars(t *testing.T) {
 		var err error
 		now = func() time.Time {
 			n, err = time.Parse("2006-01-02 15:04:05 +0000 UTC", tc.now)
-			testutil.Ok(t, err)
+			require.NoError(t, err)
 			return n
 		}
 
 		ts := EOD()
-		testutil.Equals(t, tc.expectedEOD, time.Unix(int64(ts), 0).UTC().String())
+		require.Equal(t, tc.expectedEOD, time.Unix(int64(ts), 0).UTC().String())
 
 		ts = BOD()
-		testutil.Equals(t, tc.expectedBOD, time.Unix(int64(ts), 0).UTC().String())
+		require.Equal(t, tc.expectedBOD, time.Unix(int64(ts), 0).UTC().String())
 
 	}
 }

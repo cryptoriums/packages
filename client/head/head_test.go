@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
@@ -29,12 +30,12 @@ import (
 func TestHeadSubscriberWithRedundancy_SameHeaders(t *testing.T) {
 	logger := logging.NewLogger()
 	logger, err := logging.ApplyFilter("debug", logger)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	ctx := context.Background()
 
 	sk, err := crypto.GenerateKey()
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	// All backends have the same headers.
 	{
@@ -54,9 +55,9 @@ func TestHeadSubscriberWithRedundancy_SameHeaders(t *testing.T) {
 		headSubscriber := NewHeadSubscriberWithRedundancy(logger, headSubscribers)
 
 		subsExp, err := backends[0].SubscribeNewHead(ctx, chExp)
-		testutil.Ok(t, err)
+		require.NoError(t, err)
 		subsAct, err := headSubscriber.SubscribeNewHead(ctx, chAct)
-		testutil.Ok(t, err)
+		require.NoError(t, err)
 
 		for _, b := range backends {
 			b.Commit()
@@ -67,7 +68,7 @@ func TestHeadSubscriberWithRedundancy_SameHeaders(t *testing.T) {
 		headersExp = append(headersExp, <-chExp)
 		headersAct = append(headersAct, <-chAct)
 
-		testutil.Equals(t, headersExp, headersAct)
+		require.Equal(t, headersExp, headersAct)
 
 		select {
 		case header := <-chAct:
@@ -85,12 +86,12 @@ func TestHeadSubscriberWithRedundancy_SameHeaders(t *testing.T) {
 func TestHeadSubscriberWithRedundancy_MultiCallsToSubscribeNewHead(t *testing.T) {
 	logger := logging.NewLogger()
 	logger, err := logging.ApplyFilter("debug", logger)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	ctx := context.Background()
 
 	sk, err := crypto.GenerateKey()
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	backend := testutil.GetSimBackend(t, sk)
 
@@ -101,11 +102,11 @@ func TestHeadSubscriberWithRedundancy_MultiCallsToSubscribeNewHead(t *testing.T)
 	headSubscriber := NewHeadSubscriberWithRedundancy(logger, []HeadSubscriber{backend})
 
 	subsExp, err := backend.SubscribeNewHead(ctx, chExp)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 	subsAct1, err := headSubscriber.SubscribeNewHead(ctx, chAct1)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 	subsAct2, err := headSubscriber.SubscribeNewHead(ctx, chAct2)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	for i := 0; i < 100; i++ {
 		backend.Commit()
@@ -117,8 +118,8 @@ func TestHeadSubscriberWithRedundancy_MultiCallsToSubscribeNewHead(t *testing.T)
 		headersAct1 = append(headersAct1, <-chAct1)
 		headersAct2 = append(headersAct2, <-chAct2)
 
-		testutil.Equals(t, headersExp, headersAct1)
-		testutil.Equals(t, headersExp, headersAct2)
+		require.Equal(t, headersExp, headersAct1)
+		require.Equal(t, headersExp, headersAct2)
 
 		select {
 		case header := <-chAct1:
@@ -137,16 +138,16 @@ func TestHeadSubscriberWithRedundancy_MultiCallsToSubscribeNewHead(t *testing.T)
 func TestHeadSubscriberWithRedundancy_DifferentHeaders(t *testing.T) {
 	logger := logging.NewLogger()
 	logger, err := logging.ApplyFilter("debug", logger)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	ctx := context.Background()
 
 	sk1, err := crypto.GenerateKey()
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 	backend1 := testutil.GetSimBackend(t, sk1)
 
 	sk2, err := crypto.GenerateKey()
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 	backend2 := testutil.GetSimBackend(t, sk2)
 
 	headSubscriber := NewHeadSubscriberWithRedundancy(logger, []HeadSubscriber{backend1, backend2})
@@ -156,11 +157,11 @@ func TestHeadSubscriberWithRedundancy_DifferentHeaders(t *testing.T) {
 	chAct := make(chan *types.Header)
 
 	subsExp1, err := backend1.SubscribeNewHead(ctx, chExp1)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 	subsExp2, err := backend2.SubscribeNewHead(ctx, chExp2)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 	subsAct, err := headSubscriber.SubscribeNewHead(ctx, chAct)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	var headersExp []*types.Header
 	var headersAct []*types.Header
@@ -176,7 +177,7 @@ func TestHeadSubscriberWithRedundancy_DifferentHeaders(t *testing.T) {
 	headersExp = append(headersExp, <-chExp2)
 	headersAct = append(headersAct, <-chAct)
 
-	testutil.Equals(t, headersExp, headersAct)
+	require.Equal(t, headersExp, headersAct)
 
 	select {
 	case header := <-chAct:
@@ -192,16 +193,16 @@ func TestHeadSubscriberWithRedundancy_DifferentHeaders(t *testing.T) {
 func TestHeadSubscriberWithRedundancy_OneHasExtraHeader(t *testing.T) {
 	logger := logging.NewLogger()
 	logger, err := logging.ApplyFilter("debug", logger)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	ctx := context.Background()
 
 	sk1, err := crypto.GenerateKey()
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 	backend1 := testutil.GetSimBackend(t, sk1)
 
 	sk2, err := crypto.GenerateKey()
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 	backend2 := testutil.GetSimBackend(t, sk2)
 
 	headSubscriber := NewHeadSubscriberWithRedundancy(logger, []HeadSubscriber{backend1, backend2})
@@ -211,13 +212,13 @@ func TestHeadSubscriberWithRedundancy_OneHasExtraHeader(t *testing.T) {
 	chAct := make(chan *types.Header)
 
 	subsExp1, err := backend1.SubscribeNewHead(ctx, chExp1)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	subsExp2, err := backend2.SubscribeNewHead(ctx, chExp2)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	subsAct, err := headSubscriber.SubscribeNewHead(ctx, chAct)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	var headersExp []*types.Header
 	var headersAct []*types.Header
@@ -237,7 +238,7 @@ func TestHeadSubscriberWithRedundancy_OneHasExtraHeader(t *testing.T) {
 	headersExp = append(headersExp, <-chExp2)
 	headersAct = append(headersAct, <-chAct)
 
-	testutil.Equals(t, headersExp, headersAct)
+	require.Equal(t, headersExp, headersAct)
 
 	select {
 	case header := <-chAct:
@@ -255,7 +256,7 @@ func TestHeadSubscriberWithRedundancy_OneHasExtraHeader(t *testing.T) {
 func TestHeadSubscriberWithRedundancy_ErrCh(t *testing.T) {
 	logger := logging.NewLogger()
 	logger, err := logging.ApplyFilter("debug", logger)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	ctx := context.Background()
 
@@ -263,7 +264,7 @@ func TestHeadSubscriberWithRedundancy_ErrCh(t *testing.T) {
 	headSubscriber := NewHeadSubscriberWithRedundancy(logger, []HeadSubscriber{NewBackendSimulateErr(errSent), testutil.GetSimBackend(t, nil)})
 
 	subs, err := headSubscriber.SubscribeNewHead(ctx, nil)
-	testutil.Ok(t, err)
+	require.NoError(t, err)
 
 	<-errSent
 	select {

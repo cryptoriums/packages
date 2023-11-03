@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cryptoriums/packages/testutil"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_ExpandTimeVars(t *testing.T) {
@@ -26,7 +26,7 @@ func Test_ExpandTimeVars(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		testutil.Equals(t, tc.expectedOutput, ExpandTimeVars(tc.input))
+		require.Equal(t, tc.expectedOutput, ExpandTimeVars(tc.input))
 
 	}
 }

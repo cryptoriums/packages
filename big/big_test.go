@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/cryptoriums/packages/testutil"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/require"
 )
@@ -64,12 +63,12 @@ func TestAdd(t *testing.T) {
 			for _, b := range tc.b {
 				originalB = append(originalB, big.NewInt(0).SetBits(b.Bits()))
 			}
-			testutil.Equals(t, tc.exp, Add(tc.a, tc.b...))
+			require.Equal(t, tc.exp, Add(tc.a, tc.b...))
 
 			// Verify that the original numbers are not modified.
-			testutil.Equals(t, originalA, tc.a.String())
+			require.Equal(t, originalA, tc.a.String())
 			for i, b := range originalB {
-				testutil.Equals(t, b, tc.b[i])
+				require.Equal(t, b, tc.b[i])
 			}
 		})
 	}
@@ -83,17 +82,17 @@ func TestMulWad(t *testing.T) {
 	}
 
 	e16, ok := big.NewInt(0).SetString("10000000000000000", 10)
-	testutil.Assert(t, ok)
+	require.True(t, ok)
 	e17, ok := big.NewInt(0).SetString("100000000000000000", 10)
-	testutil.Assert(t, ok)
+	require.True(t, ok)
 	e18, ok := big.NewInt(0).SetString("1000000000000000000", 10)
-	testutil.Assert(t, ok)
+	require.True(t, ok)
 	e19, ok := big.NewInt(0).SetString("10000000000000000000", 10)
-	testutil.Assert(t, ok)
+	require.True(t, ok)
 	e20, ok := big.NewInt(0).SetString("100000000000000000000", 10)
-	testutil.Assert(t, ok)
+	require.True(t, ok)
 	e22, ok := big.NewInt(0).SetString("10000000000000000000000", 10)
-	testutil.Assert(t, ok)
+	require.True(t, ok)
 
 	cases := []testcase{
 		{
@@ -142,7 +141,7 @@ func TestMulWad(t *testing.T) {
 
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
-			testutil.Equals(t, tc.exp, MulWad(tc.a, tc.b))
+			require.Equal(t, tc.exp, MulWad(tc.a, tc.b))
 
 		})
 	}
@@ -210,10 +209,10 @@ func TestFromFloatMul(t *testing.T) {
 
 	for i, tc := range cases {
 		exp, ok := big.NewInt(0).SetString(fmt.Sprintf("%.0f", tc.expected), 10)
-		testutil.Assert(t, ok, "failed to convert string to big int")
+		require.True(t, ok, "failed to convert string to big int")
 
 		act := FromFloatMul(tc.input, tc.multiplier)
-		testutil.Equals(t, exp, act, "Case:"+strconv.Itoa(i))
+		require.Equal(t, exp, act, "Case:"+strconv.Itoa(i))
 	}
 }
 
@@ -254,10 +253,10 @@ func TestToFloatDiv(t *testing.T) {
 
 	for i, tc := range cases {
 		input, ok := big.NewInt(0).SetString(fmt.Sprintf("%.0f", tc.input), 10)
-		testutil.Assert(t, ok, "failed to convert string to big int")
+		require.True(t, ok, "failed to convert string to big int")
 
 		act := ToFloatDiv(input, tc.devider)
-		testutil.Equals(t, tc.expected, act, "Case:"+strconv.Itoa(i))
+		require.Equal(t, tc.expected, act, "Case:"+strconv.Itoa(i))
 	}
 }
 

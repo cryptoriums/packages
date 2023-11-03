@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/cryptoriums/packages/testutil"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPercentageDiff(t *testing.T) {
@@ -68,6 +68,6 @@ func TestPercentageDiff(t *testing.T) {
 
 	for i, tc := range cases {
 
-		testutil.Equals(t, tc.expected, PercentageDiff(tc.old, tc.new), "Case:"+strconv.Itoa(i))
+		require.Equal(t, tc.expected, PercentageDiff(tc.old, tc.new), "Case:"+strconv.Itoa(i))
 	}
 }
