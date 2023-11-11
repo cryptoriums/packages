@@ -338,17 +338,23 @@ func (self *LocalNode) DebugTraceTransaction(ctx context.Context, hash common.Ha
 	return result, nil
 }
 
-func (self *LocalNode) TxWithImpersonateAccountWithData(ctx context.Context, from common.Address, to common.Address, data []byte) (*types.Receipt, error) {
+func (self *LocalNode) TxWithImpersonateAccountWithGasPriceAndData(ctx context.Context, from common.Address, to common.Address, gasPrice *big.Int, data []byte) (*types.Receipt, error) {
 	callImpersonateAccount := string(self.nodeType) + "_impersonateAccount"
 	err := self.rpcClient.CallContext(ctx, nil, callImpersonateAccount, from)
 	if err != nil {
 		return nil, errors.Wrapf(err, "calling %s", callImpersonateAccount)
 	}
 
+	gasPriceStr := ""
+	if gasPrice != nil {
+		gasPriceStr = hexutil.Encode([]byte(gasPrice.String()))
+	}
+
 	optsT := tx_p.SendTransactionOpts{
-		From: from,
-		To:   to,
-		Data: hexutil.Encode(data),
+		From:     from,
+		To:       to,
+		Data:     hexutil.Encode(data),
+		GasPrice: gasPriceStr,
 	}
 	var txHash string
 	err = self.rpcClient.CallContext(ctx, &txHash, "eth_sendTransaction", optsT)
@@ -373,7 +379,12 @@ func (self *LocalNode) TxWithImpersonateAccountWithData(ctx context.Context, fro
 	return rcpt, nil
 }
 
-func (self *LocalNode) TxWithImpersonateAccount(ctx context.Context, from common.Address, to common.Address, abiJ string, funcName string, args ...interface{}) (*types.Receipt, error) {
+func (self *LocalNode) TxWithImpersonateAccountWithData(ctx context.Context, from common.Address, to common.Address, data []byte) (*types.Receipt, error) {
+	return self.TxWithImpersonateAccountWithGasPriceAndData(ctx, from, to, nil, data)
+
+}
+
+func (self *LocalNode) TxWithImpersonateAccountWithGasPrice(ctx context.Context, from common.Address, to common.Address, gasPrice *big.Int, abiJ string, funcName string, args ...interface{}) (*types.Receipt, error) {
 	abiParsed, err := abi.JSON(strings.NewReader(abiJ))
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing the abi")
@@ -382,7 +393,12 @@ func (self *LocalNode) TxWithImpersonateAccount(ctx context.Context, from common
 	if err != nil {
 		return nil, errors.Wrap(err, "packing the args")
 	}
-	return self.TxWithImpersonateAccountWithData(ctx, from, to, data)
+
+	return self.TxWithImpersonateAccountWithGasPriceAndData(ctx, from, to, gasPrice, data)
+}
+
+func (self *LocalNode) TxWithImpersonateAccount(ctx context.Context, from common.Address, to common.Address, abiJ string, funcName string, args ...interface{}) (*types.Receipt, error) {
+	return self.TxWithImpersonateAccountWithGasPrice(ctx, from, to, nil, abiJ, funcName, args...)
 }
 
 func (self *LocalNode) SetBalance(ctx context.Context, of common.Address, amnt *big.Int) error {
