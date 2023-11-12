@@ -116,7 +116,9 @@ func (self *TrackerEvents) Start() error {
 		"reorgWaitPeriod", self.reorgWaitPeriod,
 	)
 
-	err := self.sendHistoricalLogs()
+	ctxS, cnclS := context.WithTimeout(self.ctx, 5*time.Minute)
+	defer cnclS()
+	err := self.sendHistoricalLogs(ctxS)
 	if err != nil {
 		return errors.Wrap(err, "sending historical logs")
 	}
@@ -142,7 +144,10 @@ func (self *TrackerEvents) Start() error {
 		case err := <-subs.Err():
 			level.Error(self.logger).Log("msg", "subscription failed will try to resubscribe", "err", err)
 
-			err = self.sendHistoricalLogs()
+			ctxS, cnclS = context.WithTimeout(self.ctx, 5*time.Minute)
+			defer cnclS()
+
+			err = self.sendHistoricalLogs(ctxS)
 			if err != nil {
 				level.Error(self.logger).Log("msg", "sending historical logs")
 			}
@@ -158,22 +163,22 @@ func (self *TrackerEvents) Start() error {
 	}
 }
 
-func (self *TrackerEvents) HistoricalLogs(fromBlock int64) ([]types.Log, error) {
+func (self *TrackerEvents) HistoricalLogs(ctx context.Context, fromBlock int64) ([]types.Log, error) {
 	q, err := events.CreateFilterQuery(self.addrs, self.eventQuery, big.NewInt(fromBlock), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return self.client.FilterLogs(self.ctx, *q)
+	return self.client.FilterLogs(ctx, *q)
 }
 
-func (self *TrackerEvents) sendHistoricalLogs() error {
+func (self *TrackerEvents) sendHistoricalLogs(ctx context.Context) error {
 	q, err := self.createFilterQuery()
 	if err != nil {
 		return errors.Wrap(err, "creating filter query")
 	}
 
-	logs, err := self.client.FilterLogs(self.ctx, *q)
+	logs, err := self.client.FilterLogs(ctx, *q)
 	if err != nil {
 		return errors.Wrap(err, "getting historical logs")
 	}
