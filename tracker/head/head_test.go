@@ -1,9 +1,12 @@
+// Copyright (c) The Cryptorium Authors.
+// Licensed under the MIT License.
+
 package head
 
 import (
 	"context"
-	"errors"
 	"math/big"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,11 +14,13 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
 type testChainReader struct {
-	sub *testSubscription
+	subLocker sync.Locker
+	sub       *testSubscription
 }
 
 var _ ethereum.ChainReader = &testChainReader{}
@@ -50,6 +55,8 @@ func (tcr *testChainReader) TransactionInBlock(ctx context.Context, blockHash co
 }
 
 func (tcr *testChainReader) SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (sub ethereum.Subscription, err error) {
+	tcr.subLocker.Lock()
+	defer tcr.subLocker.Unlock()
 	tcr.sub = &testSubscription{
 		ctx:       ctx,
 		chHeaders: ch,
@@ -57,6 +64,18 @@ func (tcr *testChainReader) SubscribeNewHead(ctx context.Context, ch chan<- *typ
 	}
 	sub = tcr.sub
 	return
+}
+
+func (tcr *testChainReader) sendHeader() {
+	tcr.subLocker.Lock()
+	defer tcr.subLocker.Unlock()
+	tcr.sub.chHeaders <- &types.Header{}
+}
+
+func (tcr *testChainReader) sendError() {
+	tcr.subLocker.Lock()
+	defer tcr.subLocker.Unlock()
+	tcr.sub.chErrors <- errors.New("random error")
 }
 
 type testSubscription struct {
@@ -79,7 +98,9 @@ func TestTrackerHead(t *testing.T) {
 	defer cancel()
 
 	logger := logging.NewLogger()
-	client := &testChainReader{}
+	client := &testChainReader{
+		subLocker: &sync.Mutex{},
+	}
 
 	tracker, blocks, err := New(
 		ctx,
@@ -89,8 +110,6 @@ func TestTrackerHead(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	_ = blocks
-
 	go func() {
 		err := tracker.Start()
 		require.NoError(t, err)
@@ -98,27 +117,20 @@ func TestTrackerHead(t *testing.T) {
 
 	go func() {
 		time.Sleep(time.Second)
-		sub := client.sub
+		client.sendHeader()
 
 		time.Sleep(time.Second)
-		sub.chHeaders <- &types.Header{}
-
-		sub.chErrors <- errors.New("random error")
+		client.sendError()
 
 		time.Sleep(time.Second)
-		sub = client.sub
+		client.sendHeader()
 
 		time.Sleep(time.Second)
-		sub.chHeaders <- &types.Header{}
-		time.Sleep(time.Second)
-
-		sub.chErrors <- errors.New("random error")
+		client.sendError()
 
 		time.Sleep(time.Second)
-		sub = client.sub
+		client.sendHeader()
 
-		time.Sleep(time.Second)
-		sub.chHeaders <- &types.Header{}
 		time.Sleep(time.Second)
 
 		cancel()

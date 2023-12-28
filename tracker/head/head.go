@@ -63,33 +63,47 @@ func New(
 func (self *TrackerHead) Start() error {
 	level.Info(self.logger).Log("msg", "starting", "reorgWaitPeriod", self.reorgWaitPeriod)
 
-	src, subs := self.waitSubscribe()
-	defer func() {
-		if subs != nil {
-			subs.Unsubscribe()
-		}
-	}()
-
-	go self.listen(src)
-
 	for {
-		select {
-		case <-self.ctx.Done():
+		var done bool
+
+		func() {
+			src, subs := self.waitSubscribe()
+			// according to docs, Unsubscribe() should always be called
+			defer subs.Unsubscribe()
+
+			// chances are that the context was canceled while waiting for the subscription
+			if src == nil {
+				done = true
+				return
+			}
+
+			ctx, cancel := context.WithCancel(self.ctx)
+			defer cancel()
+
+			// using child context to cancel the listener
+			go self.listen(ctx, src)
+
+			select {
+			case <-self.ctx.Done():
+				done = true
+			case err := <-subs.Err():
+				level.Error(self.logger).Log("msg", "subscription failed will try to resubscribe", "err", err)
+			}
+		}()
+
+		// break the loop if the context was canceled
+		if done {
 			return nil
-		case err := <-subs.Err():
-			level.Error(self.logger).Log("msg", "subscription failed will try to resubscribe", "err", err)
-			src, subs = self.waitSubscribe()
-			self.listen(src)
 		}
 	}
 }
 
-func (self *TrackerHead) listen(src chan *types.Header) {
+func (self *TrackerHead) listen(ctx context.Context, src chan *types.Header) {
 	level.Info(self.logger).Log("msg", "starting new subs listener")
 
 	for {
 		select {
-		case <-self.ctx.Done():
+		case <-ctx.Done():
 			level.Info(self.logger).Log("msg", "subscription listener canceled")
 			return
 		case event := <-src:
@@ -98,7 +112,7 @@ func (self *TrackerHead) listen(src chan *types.Header) {
 			level.Debug(logger).Log("msg", "new block")
 			if self.reorgWaitPeriod == 0 {
 				go func(event *types.Header) {
-					ctx, cncl := context.WithTimeout(self.ctx, time.Minute)
+					ctx, cncl := context.WithTimeout(ctx, time.Minute)
 					defer cncl()
 					block, err := self.client.BlockByNumber(ctx, event.Number)
 					if err != nil {
@@ -107,7 +121,7 @@ func (self *TrackerHead) listen(src chan *types.Header) {
 					}
 					select {
 					case self.dstChan <- block:
-					case <-self.ctx.Done():
+					case <-ctx.Done():
 						return
 					}
 				}(event)
@@ -122,11 +136,11 @@ func (self *TrackerHead) listen(src chan *types.Header) {
 
 				select {
 				case <-waitForReorg.C:
-				case <-self.ctx.Done():
+				case <-ctx.Done():
 					return
 				}
 
-				ctx, cncl := context.WithTimeout(self.ctx, 2*time.Minute)
+				ctx, cncl := context.WithTimeout(ctx, 2*time.Minute)
 				defer cncl()
 
 				// Duplicate event numbers will still return the same block when using this query.
@@ -149,7 +163,7 @@ func (self *TrackerHead) listen(src chan *types.Header) {
 				select {
 				case self.dstChan <- block:
 					return
-				case <-self.ctx.Done():
+				case <-ctx.Done():
 					return
 				}
 
