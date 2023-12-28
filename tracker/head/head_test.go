@@ -115,23 +115,19 @@ func TestTrackerHead(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
+	n := 7
+
 	go func() {
-		time.Sleep(time.Second)
-		client.sendHeader()
+		// since we are using moked client, we just need a bit of time to start the subscription
+		time.Sleep(time.Millisecond * 100)
 
-		time.Sleep(time.Second)
-		client.sendError()
+		for i := 0; i < n; i++ {
+			client.sendHeader()
+			time.Sleep(time.Millisecond * 100)
 
-		time.Sleep(time.Second)
-		client.sendHeader()
-
-		time.Sleep(time.Second)
-		client.sendError()
-
-		time.Sleep(time.Second)
-		client.sendHeader()
-
-		time.Sleep(time.Second)
+			client.sendError()
+			time.Sleep(time.Millisecond * 100)
+		}
 
 		cancel()
 	}()
@@ -153,5 +149,5 @@ func TestTrackerHead(t *testing.T) {
 		}
 	}()
 
-	require.Len(t, output, 3)
+	require.Len(t, output, n)
 }

@@ -63,17 +63,14 @@ func New(
 func (self *TrackerHead) Start() error {
 	level.Info(self.logger).Log("msg", "starting", "reorgWaitPeriod", self.reorgWaitPeriod)
 
-	for {
-		var done bool
-
+	for self.ctx.Err() == nil {
 		func() {
 			src, subs := self.waitSubscribe()
 			// according to docs, Unsubscribe() should always be called
 			defer subs.Unsubscribe()
 
 			// chances are that the context was canceled while waiting for the subscription
-			if src == nil {
-				done = true
+			if self.ctx.Err() != nil {
 				return
 			}
 
@@ -85,17 +82,13 @@ func (self *TrackerHead) Start() error {
 
 			select {
 			case <-self.ctx.Done():
-				done = true
 			case err := <-subs.Err():
 				level.Error(self.logger).Log("msg", "subscription failed will try to resubscribe", "err", err)
 			}
 		}()
-
-		// break the loop if the context was canceled
-		if done {
-			return nil
-		}
 	}
+
+	return nil
 }
 
 func (self *TrackerHead) listen(ctx context.Context, src chan *types.Header) {
