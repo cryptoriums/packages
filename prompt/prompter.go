@@ -12,11 +12,18 @@ import (
 
 // Stdin holds the stdin line reader (also using stdout for printing prompts).
 // Only this reader may be used for input because it keeps an internal buffer.
-var Stdin = newTerminalPrompter()
+var Stdin UserPrompter = newTerminalPrompter()
 
 // UserPrompter defines the methods needed by the console to prompt the user for
 // various types of inputs.
 type UserPrompter interface {
+	// PromptWithSuggestion displays prompt and an editable text with cursor at
+	// given position. The cursor will be set to the end of the line if given position
+	// is negative or greater than length of text (in runes). Returns a line of user input, not
+	// including a trailing newline character. An io.EOF error is returned if the user
+	// signals end-of-file by pressing Ctrl-D.
+	PromptWithSuggestion(prompt string, text string, pos int) (string, error)
+
 	// PromptInput displays the given prompt to the user and requests some textual
 	// data to be entered, returning the input of the user.
 	PromptInput(prompt string) (string, error)
@@ -44,6 +51,38 @@ type UserPrompter interface {
 	// SetWordCompleter sets the completion function that the prompter will call to
 	// fetch completion candidates when the user presses tab.
 	SetWordCompleter(completer WordCompleter)
+}
+
+func PromptWithSuggestion(prompt string, text string, pos int) (string, error) {
+	return Stdin.PromptWithSuggestion(prompt, text, pos)
+}
+
+func PromptInput(prompt string) (string, error) {
+	return Stdin.PromptInput(prompt)
+}
+
+func PromptPassword(prompt string) (string, error) {
+	return Stdin.PromptPassword(prompt)
+}
+
+func PromptConfirm(prompt string) (bool, error) {
+	return Stdin.PromptConfirm(prompt)
+}
+
+func SetHistory(history []string) {
+	Stdin.SetHistory(history)
+}
+
+func AppendHistory(command string) {
+	Stdin.AppendHistory(command)
+}
+
+func ClearHistory() {
+	Stdin.ClearHistory()
+}
+
+func SetWordCompleter(completer WordCompleter) {
+	Stdin.SetWordCompleter(completer)
 }
 
 // WordCompleter takes the currently edited line with the cursor position and
@@ -87,6 +126,26 @@ func newTerminalPrompter() *terminalPrompter {
 	p.SetTabCompletionStyle(liner.TabPrints)
 	p.SetMultiLineMode(true)
 	return p
+}
+
+// PromptWithSuggestion displays prompt and an editable text with cursor at
+// given position. The cursor will be set to the end of the line if given position
+// is negative or greater than length of text (in runes). Returns a line of user input, not
+// including a trailing newline character. An io.EOF error is returned if the user
+// signals end-of-file by pressing Ctrl-D.
+func (p *terminalPrompter) PromptWithSuggestion(prompt string, text string, pos int) (string, error) {
+	if p.supported {
+		p.rawMode.ApplyMode()
+		defer p.normalMode.ApplyMode()
+	} else {
+		// liner tries to be smart about printing the prompt
+		// and doesn't print anything if input is redirected.
+		// Un-smart it by printing the prompt always.
+		fmt.Print(prompt)
+		prompt = ""
+		defer fmt.Println()
+	}
+	return p.State.PromptWithSuggestion(prompt, text, pos)
 }
 
 // PromptInput displays the given prompt to the user and requests some textual
