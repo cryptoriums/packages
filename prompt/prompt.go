@@ -14,7 +14,6 @@ import (
 	"github.com/cryptoriums/packages/env"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/console/prompt"
 	"github.com/peterh/liner"
 	"github.com/pkg/errors"
 )
@@ -30,7 +29,7 @@ func Contract(contracts []env.Contract, print bool, allowEmpty bool) (*common.Ad
 		}
 	}
 	for {
-		resp, err := prompt.Stdin.PromptInput(msg)
+		resp, err := PromptInput(msg)
 		if err != nil {
 			return nil, "", err
 		}
@@ -62,7 +61,7 @@ func Nonce(ctx context.Context, client ethereum.PendingStateReader, addr common.
 			return 0, errors.Wrap(err, "running PendingNonceAt")
 		}
 		for {
-			_nonce, err := prompt.Stdin.PromptWithSuggestion("Nonce: ", strconv.Itoa(int(nonce)), 0)
+			_nonce, err := PromptWithSuggestion("Nonce: ", strconv.Itoa(int(nonce)), 0)
 			if err != nil {
 				return 0, errors.Wrap(err, "PromptWithSuggestion for nonce")
 			}
@@ -78,7 +77,7 @@ func Nonce(ctx context.Context, client ethereum.PendingStateReader, addr common.
 
 func ReadFile() ([]byte, string, error) {
 	for {
-		filePath, err := prompt.Stdin.PromptWithSuggestion("Enter file path: ", "/home/krasi/src/github.com/cryptoriums/packages/env.json", 0)
+		filePath, err := PromptWithSuggestion("Enter file path: ", "/home/krasi/src/github.com/cryptoriums/packages/env.json", 0)
 		if err != nil {
 			if err == liner.ErrPromptAborted {
 				return nil, "", err
@@ -100,7 +99,7 @@ func Token(netID int64) (*env.Token, error) {
 		fmt.Println(strconv.Itoa(i) + ":" + token.Name + " " + token.Address[netID].Hex())
 	}
 	for {
-		resp, err := prompt.Stdin.PromptInput("Select token index or enter custom token contract address: ")
+		resp, err := PromptInput("Select token index or enter custom token contract address: ")
 		if err != nil {
 			return nil, err
 		}
@@ -132,7 +131,7 @@ func Token(netID int64) (*env.Token, error) {
 
 func Float(msg string, min, max float64) (float64, error) {
 	for {
-		_input, err := prompt.Stdin.PromptInput(msg)
+		_input, err := PromptInput(msg)
 		if err != nil {
 			return 0, errors.Wrap(err, "PromptInput")
 		}
@@ -151,7 +150,7 @@ func Float(msg string, min, max float64) (float64, error) {
 
 func Int(msg string, min, max int) (int64, error) {
 	for {
-		_input, err := prompt.Stdin.PromptInput(msg)
+		_input, err := PromptInput(msg)
 		if err != nil {
 			return 0, errors.Wrap(err, "PromptInput")
 		}
@@ -170,7 +169,7 @@ func Int(msg string, min, max int) (int64, error) {
 
 func Duration(msg string, def time.Duration) (time.Duration, error) {
 	for {
-		resp, err := prompt.Stdin.PromptWithSuggestion(msg, def.String(), 0)
+		resp, err := PromptWithSuggestion(msg, def.String(), 0)
 		if err != nil {
 			return 0, err
 		}
@@ -187,7 +186,7 @@ func Duration(msg string, def time.Duration) (time.Duration, error) {
 
 func Address(msg string, required bool) (*common.Address, error) {
 	for {
-		resp, err := prompt.Stdin.PromptInput(msg)
+		resp, err := PromptInput(msg)
 		if err != nil {
 			return nil, err
 		}
