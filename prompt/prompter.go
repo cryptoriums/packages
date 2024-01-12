@@ -45,7 +45,7 @@ type UserPrompter interface {
 	// if and only if the prompt to append was a valid command.
 	AppendHistory(command string)
 
-	// ClearHistory clears the entire history
+	// ClearHistory clears the entire history.
 	ClearHistory()
 
 	// SetWordCompleter sets the completion function that the prompter will call to
@@ -120,6 +120,7 @@ func newTerminalPrompter() *terminalPrompter {
 		p.normalMode = normalMode
 		p.rawMode = rawMode
 		// Switch back to normal mode while we're not prompting.
+		//nolint:errcheck
 		normalMode.ApplyMode()
 	}
 	p.SetCtrlCAborts(true)
@@ -135,7 +136,9 @@ func newTerminalPrompter() *terminalPrompter {
 // signals end-of-file by pressing Ctrl-D.
 func (p *terminalPrompter) PromptWithSuggestion(prompt string, text string, pos int) (string, error) {
 	if p.supported {
+		//nolint:errcheck
 		p.rawMode.ApplyMode()
+		//nolint:errcheck
 		defer p.normalMode.ApplyMode()
 	} else {
 		// liner tries to be smart about printing the prompt
@@ -152,7 +155,9 @@ func (p *terminalPrompter) PromptWithSuggestion(prompt string, text string, pos 
 // data to be entered, returning the input of the user.
 func (p *terminalPrompter) PromptInput(prompt string) (string, error) {
 	if p.supported {
+		//nolint:errcheck
 		p.rawMode.ApplyMode()
+		//nolint:errcheck
 		defer p.normalMode.ApplyMode()
 	} else {
 		// liner tries to be smart about printing the prompt
@@ -170,7 +175,9 @@ func (p *terminalPrompter) PromptInput(prompt string) (string, error) {
 // The method returns the input provided by the user.
 func (p *terminalPrompter) PromptPassword(prompt string) (passwd string, err error) {
 	if p.supported {
+		//nolint:errcheck
 		p.rawMode.ApplyMode()
+		//nolint:errcheck
 		defer p.normalMode.ApplyMode()
 		return p.State.PasswordPrompt(prompt)
 	}
@@ -198,6 +205,7 @@ func (p *terminalPrompter) PromptConfirm(prompt string) (bool, error) {
 // SetHistory sets the input scrollback history that the prompter will allow
 // the user to scroll back to.
 func (p *terminalPrompter) SetHistory(history []string) {
+	//nolint:errcheck
 	p.State.ReadHistory(strings.NewReader(strings.Join(history, "\n")))
 }
 
@@ -206,7 +214,7 @@ func (p *terminalPrompter) AppendHistory(command string) {
 	p.State.AppendHistory(command)
 }
 
-// ClearHistory clears the entire history
+// ClearHistory clears the entire history.
 func (p *terminalPrompter) ClearHistory() {
 	p.State.ClearHistory()
 }
