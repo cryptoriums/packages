@@ -148,7 +148,7 @@ func ExportBin(folder string, types, bins []string) error {
 
 func ExportPackage(pkgFolder string, types []string, abis []string, bins []string, sigs []map[string]string, libs map[string]string, aliases map[string]string) error {
 	pkgName := filepath.Base(pkgFolder)
-	code, err := bind.Bind(types, abis, bins, sigs, pkgName, bind.LangGo, libs, aliases)
+	code, err := bind.Bind(types, abis, bins, sigs, pkgName, libs, aliases)
 	if err != nil {
 		return errors.Wrapf(err, "generate the Go wrapper:%v", pkgName)
 	}
